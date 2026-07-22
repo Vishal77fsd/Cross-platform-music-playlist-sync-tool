@@ -1,0 +1,64 @@
+# Project structure
+
+```text
+src/
+  app/
+    api/
+      auth/
+        login/
+        logout/
+        signup/
+      providers/
+      transfer/
+    app/
+      page.tsx
+    dashboard/
+      history/
+        page.tsx
+      platforms/
+        page.tsx
+      transfer/
+        page.tsx
+      layout.tsx
+      page.tsx
+    login/
+      page.tsx
+    signup/
+      page.tsx
+    globals.css
+    layout.tsx
+    page.tsx
+  components/
+    AuthForm.module.css
+    AuthLayout.module.css
+    AuthLayout.tsx
+    DashboardNav.tsx
+    LogoutButton.tsx
+    Nav.module.css
+    Nav.tsx
+    TransferPicker.module.css
+    TransferPicker.tsx
+    TransferVisual.module.css
+    TransferVisual.tsx
+  lib/
+    adapters/
+      spotify/
+        SpotifyProvider.ts
+      ytmusic/
+        YtMusicProvider.ts
+    auth/
+      password.ts
+      session.ts
+    core/
+      MusicProvider.ts
+      ProviderRegistry.ts
+      registerProviders.ts
+    db/
+      pool.ts
+      users.ts
+    providerMeta.ts
+    types/
+      domain.ts
+```
+
+This structure is organized around Next.js app routes, reusable UI components, and provider-specific adapters for playlist syncing.

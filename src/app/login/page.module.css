@@ -1,0 +1,26 @@
+.successBanner {
+  background: var(--surface-raised);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.successTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.successText {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.errorText {
+  font-size: 13px;
+  color: var(--warn);
+  margin: 0;
+}

@@ -1,0 +1,101 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.input {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 13px;
+  border-radius: 8px;
+}
+
+.input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+
+.input:hover {
+  border-color: var(--accent-dim);
+}
+
+.submit {
+  margin-top: 8px;
+  background: var(--accent);
+  color: #16210a;
+  border: none;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 13px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.submit:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.submit:hover {
+  opacity: 0.88;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.oauthRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauthButton {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 11px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  text-align: center;
+}
+.oauthButton:hover {
+  border-color: var(--accent-dim);
+}
+.oauthButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

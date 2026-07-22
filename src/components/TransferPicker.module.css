@@ -1,0 +1,91 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.selectLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.select select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.select select:hover {
+  border-color: var(--accent-dim);
+}
+
+.path {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 22px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--warn);
+  margin: -8px 0 0;
+}
+
+.cta {
+  background: var(--surface-raised);
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cta:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cta:not(:disabled):hover {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .path {
+    transform: rotate(90deg);
+    padding: 0;
+    align-self: center;
+  }
+}

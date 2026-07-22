@@ -1,0 +1,64 @@
+.shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+
+.header {
+  margin-bottom: 56px;
+}
+
+.eyebrowLink {
+  text-decoration: none;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+
+.header h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.15;
+  margin: 0 0 16px;
+  max-width: 18ch;
+}
+
+.subhead {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  max-width: 42ch;
+  margin: 0;
+}
+
+.main {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 36px;
+}
+
+.statusLine {
+  font-size: 15px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.statusError {
+  color: var(--warn);
+}
+
+.statusDetail {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  margin-top: 8px;
+  color: var(--text-dim);
+}

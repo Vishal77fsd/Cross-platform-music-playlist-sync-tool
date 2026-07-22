@@ -1,0 +1,45 @@
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 24px;
+}
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.loginLink {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.loginLink:hover {
+  color: var(--text);
+}
+
+.signupButton {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 7px;
+  padding: 8px 16px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.signupButton:hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}

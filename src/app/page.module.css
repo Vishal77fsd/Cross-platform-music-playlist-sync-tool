@@ -1,0 +1,180 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hero */
+
+.hero {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 48px 24px 88px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.heroCopy h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(32px, 4.6vw, 50px);
+  line-height: 1.12;
+  margin: 0 0 20px;
+  max-width: 16ch;
+}
+
+.heroSub {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 46ch;
+  margin: 0 0 32px;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.primaryCta {
+  background: var(--accent);
+  color: #16210a;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 13px 22px;
+  border-radius: 8px;
+  transition: opacity 0.15s ease;
+}
+
+.primaryCta:hover {
+  opacity: 0.88;
+}
+
+.secondaryCta {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.secondaryCta:hover {
+  color: var(--text);
+}
+
+/* Steps */
+
+.steps {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px 88px;
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 28px;
+}
+
+.stepList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.stepList li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stepIndex {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.stepList h3 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.stepList p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Platforms */
+
+.platforms {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px 96px;
+}
+
+.platformList {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.platformBadge,
+.platformBadgeMuted {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.platformBadgeMuted {
+  color: var(--text-dim);
+  border-style: dashed;
+}
+
+/* Footer */
+
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.footerDim {
+  color: var(--text-dim);
+}
+
+@media (max-width: 760px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding-top: 32px;
+  }
+
+  .stepList {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
