@@ -20,3 +20,16 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Case-insensitive lookups: emails are stored as given, but we always
 -- query lowercased, so index the lowercased form for fast lookups.
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email));
+
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform            TEXT NOT NULL,
+  provider_account_id TEXT NOT NULL,
+  access_token        TEXT NOT NULL,
+  refresh_token       TEXT,
+  expires_at          TIMESTAMPTZ NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, platform)
+);

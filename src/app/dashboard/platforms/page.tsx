@@ -1,6 +1,5 @@
 "use client";
-
-import { SpotifyProvider } from "@/lib/adapters/spotify/SpotifyProvider";
+import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 
 const platforms = [
@@ -25,21 +24,32 @@ const platforms = [
   },
 ];
 
-function handleConnectClick(platform: (typeof platforms)[number]) {
-  const state = crypto.randomUUID();
-
-  // 1. Save the state locally so you can verify it when the user returns
-  sessionStorage.setItem("oauth_state", state);
-
+async function handleConnectClick(platform: (typeof platforms)[number]) {
   if (platform.id === "spotify") {
-    const spotifyProvider = new SpotifyProvider();
-    const redirectUrl = spotifyProvider.getAuthorizationUrl(state);
-
-    // 2. Redirect the current tab entirely
-    window.location.href = redirectUrl;
+    // Get the auth URL from our API route — SpotifyProvider stays server-side
+    const res = await fetch("/api/auth/spotify/connect");
+    const { url, state } = await res.json();
+    console.log("spotify url", url, state);
+    // Save state to verify when Spotify redirects back
+    sessionStorage.setItem("oauth_state", state);
+    window.location.href = url;
+    return;
+  }
+  if (platform.id === "ytmusic") {
+    // Get the auth URL from our API route — YouTubeProvider stays server-side
+    const res = await fetch("/api/auth/ytmusic/connect");
+    const { url, state } = await res.json();
+    console.log("ytmusic url", url, state);
+    sessionStorage.setItem("oauth_state", state);
+    window.location.href = url;
+    return;
   }
 }
 export default function PlatformsPage() {
+  const searchParams = useSearchParams();
+  const connected = searchParams.get("connected");
+  const error = searchParams.get("error");
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -50,6 +60,24 @@ export default function PlatformsPage() {
         </p>
       </div>
 
+      {/* Connection feedback banners */}
+      {connected && (
+        <div className={styles.successBanner}>
+          🎉 {connected.charAt(0).toUpperCase() + connected.slice(1)} connected
+          successfully.
+        </div>
+      )}
+      {error === "access_denied" && (
+        <div className={styles.errorBanner}>
+          You denied access. Connect a platform to continue.
+        </div>
+      )}
+      {error === "token_exchange_failed" && (
+        <div className={styles.errorBanner}>
+          Something went wrong connecting. Please try again.
+        </div>
+      )}
+      
       <div className={styles.list}>
         {platforms.map((p) => (
           <div key={p.id} className={styles.card}>

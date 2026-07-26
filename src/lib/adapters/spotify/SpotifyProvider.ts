@@ -42,11 +42,38 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async exchangeCodeForToken(_code: string): Promise<ProviderAuthToken> {
-    // TODO: POST to https://accounts.spotify.com/api/token
-    //   body: grant_type=authorization_code, code, redirect_uri, client_id, client_secret
-    //   (form-encoded, not JSON — Spotify's token endpoint expects
-    //   application/x-www-form-urlencoded)
-    throw new Error("SpotifyProvider.exchangeCodeForToken not yet implemented");
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code: _code,
+      redirect_uri: this.redirectUri,
+    });
+
+    const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString(
+      "base64",
+    );
+
+    const res = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${credentials}`,
+      },
+      body: body.toString(),
+    });
+
+    if(!res.ok){
+      const error = await res.text();
+      throw new Error(`Spotify token exchange failed: ${error}`);
+    }
+
+    const data = await res.json();
+
+    return {
+      provider: this.name,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: Date.now() + data.expires_in * 1000, // expires_in is in seconds
+    }
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {

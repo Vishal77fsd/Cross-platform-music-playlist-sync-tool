@@ -22,5 +22,5 @@ export async function middleware(request: NextRequest) {
 
 // Only run this check on the transfer app route, not the marketing pages.
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: ["/app/:path*", "/dashboard/:path*"],
 };

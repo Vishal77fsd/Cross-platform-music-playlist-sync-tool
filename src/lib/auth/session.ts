@@ -36,7 +36,7 @@ export async function createSession(payload: SessionPayload): Promise<void> {
 
   cookies().set(COOKIE_NAME, token, {
     httpOnly: true, // JS in the browser can't read this cookie
-    secure: process.env.NODE_ENV === "production", // HTTPS only in prod
+    secure: process.env.NODE_ENV === "production" ? true : false, // HTTPS only in prod
     sameSite: "lax", // sent on normal navigation, blocks most CSRF vectors
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",
@@ -50,6 +50,8 @@ export async function createSession(payload: SessionPayload): Promise<void> {
 export async function getSession(
   req?: NextRequest,
 ): Promise<SessionPayload | null> {
+  console.log("Session cookie value:", req?.cookies.get(COOKIE_NAME)?.value);
+
   const token = req
     ? req.cookies.get(COOKIE_NAME)?.value
     : cookies().get(COOKIE_NAME)?.value;
