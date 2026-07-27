@@ -1,4 +1,6 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 
@@ -18,37 +20,53 @@ const platforms = [
   {
     id: "youtube",
     name: "YouTube",
-    dot: "#ff0033",
+    dot: "#ff6b6b",
     description:
       "Extract tracks from any public YouTube playlist — no account needed.",
   },
 ];
 
-async function handleConnectClick(platform: (typeof platforms)[number]) {
-  if (platform.id === "spotify") {
-    // Get the auth URL from our API route — SpotifyProvider stays server-side
+type ConnectedMap = Record<string, boolean>;
+
+async function handleConnectClick(platformId: string) {
+  if (platformId === "spotify") {
     const res = await fetch("/api/auth/spotify/connect");
     const { url, state } = await res.json();
-    console.log("spotify url", url, state);
-    // Save state to verify when Spotify redirects back
     sessionStorage.setItem("oauth_state", state);
     window.location.href = url;
-    return;
   }
-  if (platform.id === "ytmusic") {
-    // Get the auth URL from our API route — YouTubeProvider stays server-side
+
+  if (platformId === "ytmusic") {
     const res = await fetch("/api/auth/ytmusic/connect");
     const { url, state } = await res.json();
-    console.log("ytmusic url", url, state);
     sessionStorage.setItem("oauth_state", state);
     window.location.href = url;
-    return;
   }
 }
+
+async function handleDisconnectClick(platformId: string) {
+  await fetch(`/api/accounts?platform=${platformId}`, { method: "DELETE" });
+  // Reload to reflect the change
+  window.location.reload();
+}
+
 export default function PlatformsPage() {
   const searchParams = useSearchParams();
   const connected = searchParams.get("connected");
   const error = searchParams.get("error");
+
+  const [connectedMap, setConnectedMap] = useState<ConnectedMap>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/accounts")
+      .then((res) => res.json())
+      .then((data) => {
+        setConnectedMap(data.connected ?? {});
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -60,7 +78,6 @@ export default function PlatformsPage() {
         </p>
       </div>
 
-      {/* Connection feedback banners */}
       {connected && (
         <div className={styles.successBanner}>
           🎉 {connected.charAt(0).toUpperCase() + connected.slice(1)} connected
@@ -68,44 +85,65 @@ export default function PlatformsPage() {
         </div>
       )}
       {error === "access_denied" && (
-        <div className={styles.errorBanner}>
-          You denied access. Connect a platform to continue.
-        </div>
+        <div className={styles.errorBanner}>You denied access. Try again.</div>
       )}
       {error === "token_exchange_failed" && (
         <div className={styles.errorBanner}>
-          Something went wrong connecting. Please try again.
+          Something went wrong. Please try again.
         </div>
       )}
-      
+
       <div className={styles.list}>
-        {platforms.map((p) => (
-          <div key={p.id} className={styles.card}>
-            <div className={styles.cardLeft}>
-              <span className={styles.dot} style={{ background: p.dot }} />
-              <div className={styles.meta}>
-                <span className={styles.name}>{p.name}</span>
-                <span className={styles.description}>{p.description}</span>
+        {platforms.map((p) => {
+          const isConnected = p.id === "youtube" ? true : connectedMap[p.id];
+
+          return (
+            <div
+              key={p.id}
+              className={`${styles.card} ${isConnected ? styles.cardConnected : ""}`}
+            >
+              <div className={styles.cardLeft}>
+                <span className={styles.dot} style={{ background: p.dot }} />
+                <div className={styles.meta}>
+                  <div className={styles.nameRow}>
+                    <span className={styles.name}>{p.name}</span>
+                    {!loading && isConnected && p.id !== "youtube" && (
+                      <span className={styles.connectedBadge}>● Connected</span>
+                    )}
+                  </div>
+                  <span className={styles.description}>{p.description}</span>
+                </div>
+              </div>
+
+              <div className={styles.cardRight}>
+                {p.id === "youtube" ? (
+                  <span className={styles.publicBadge}>Public playlists</span>
+                ) : loading ? (
+                  <span className={styles.statusBadge}>Checking...</span>
+                ) : isConnected ? (
+                  <button
+                    className={styles.disconnectButton}
+                    type="button"
+                    onClick={() => handleDisconnectClick(p.id)}
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <>
+                    <span className={styles.statusBadge}>Not connected</span>
+                    <button
+                      className={styles.connectButton}
+                      type="button"
+                      onClick={() => handleConnectClick(p.id)}
+                    >
+                      Connect
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            <div className={styles.cardRight}>
-              {p.id === "youtube" ? (
-                <span className={styles.publicBadge}>Public playlists</span>
-              ) : (
-                <>
-                  <span className={styles.statusBadge}>Not connected</span>
-                  <button
-                    className={styles.connectButton}
-                    type="button"
-                    onClick={() => handleConnectClick(p)}
-                  >
-                    Connect
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <p className={styles.note}>
