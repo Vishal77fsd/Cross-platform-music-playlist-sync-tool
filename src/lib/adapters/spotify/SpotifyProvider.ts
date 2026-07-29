@@ -79,8 +79,6 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {
-    // TODO: POST to https://accounts.spotify.com/api/token
-    //   body: grant_type=refresh_token, refresh_token, client_id, client_secret
     if (!_token.refreshToken) {
       throw new Error(
         "Cannot refresh Spotify token: No refresh token available.",
@@ -143,9 +141,6 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {
-    // TODO: GET `${SPOTIFY_API_BASE}/me/playlists` with Authorization: Bearer <token>
-    //   Paginated via `next` field in the response — loop until next is null.
-
     const playlists: ProviderPlaylist[] = [];
 
     let url = `${SPOTIFY_API_BASE}/me/playlists?limit=50`;
