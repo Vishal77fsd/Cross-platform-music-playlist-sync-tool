@@ -9,7 +9,6 @@ export interface AccountRecord {
   refreshToken: string | null;
   expiresAt: string;
 }
-
 function mapAccountRow(row: {
   id: string;
   user_id: string;
