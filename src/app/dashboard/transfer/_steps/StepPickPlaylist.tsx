@@ -9,6 +9,7 @@ interface Playlist {
   name: string;
   trackCount: number;
   image?: string;
+  images?: Object[]; // For Spotify playlists, which have an array of images
 }
 
 interface Props {
@@ -17,7 +18,11 @@ interface Props {
   onBack: () => void;
 }
 
-export default function StepPickPlaylist({ transfer, onSelect, onBack }: Props) {
+export default function StepPickPlaylist({
+  transfer,
+  onSelect,
+  onBack,
+}: Props) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,12 +35,15 @@ export default function StepPickPlaylist({ transfer, onSelect, onBack }: Props) 
           setError(data.error);
         } else {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setPlaylists(data.playlists.map((p: any) => ({
-            id: p.providerId,
-            name: p.name,
-            trackCount: p.trackCount,
-            image: p.imageUrl,
-          })));
+          setPlaylists(
+            data.playlists.map((p: any) => ({
+              id: p.providerId,
+              name: p.name,
+              trackCount: p.trackCount,
+              image: p.imageUrl,
+              images: p.images, // For YT playlists, which have an array of images
+            })),
+          );
         }
         setLoading(false);
       })
@@ -68,14 +76,26 @@ export default function StepPickPlaylist({ transfer, onSelect, onBack }: Props) 
               onClick={() => onSelect(p)}
               type="button"
             >
-              {p.image ? (
-                <img src={p.image} alt={p.name} className={styles.playlistImage} />
+              {Array.isArray(p.images) ? (
+                <img
+                  src={p?.images[0]?.url}
+                  alt={p.name}
+                  className={styles.playlistImage}
+                />
+              ) : p.image ? (
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className={styles.playlistImage}
+                />
               ) : (
                 <div className={styles.playlistImagePlaceholder} />
               )}
               <div className={styles.playlistInfo}>
                 <span className={styles.playlistName}>{p.name}</span>
-                <span className={styles.playlistCount}>{p.trackCount} tracks</span>
+                <span className={styles.playlistCount}>
+                  {p.trackCount} tracks
+                </span>
               </div>
             </button>
           ))}
