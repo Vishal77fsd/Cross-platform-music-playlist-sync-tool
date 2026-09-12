@@ -3,6 +3,8 @@ import type {
   ProviderAuthToken,
   ProviderPlaylist,
   ProviderTrack,
+  SpotifyPlaylistResponse,
+  SpotifyUserProfile,
 } from "../../types/domain";
 import type { MusicProvider } from "../../core/MusicProvider";
 
@@ -188,6 +190,20 @@ export class SpotifyProvider implements MusicProvider {
     _playlistId: string,
   ): Promise<ProviderTrack[]> {
     // TODO: GET `${SPOTIFY_API_BASE}/playlists/{id}/tracks` (100 per page, paginated)
+
+    try {
+    } catch (error) {
+      console.error("Error fetching Spotify playlist tracks:", error);
+      throw new Error(
+        "Failed to fetch Spotify playlist tracks. See server logs for details.",
+      );
+    }
+    console.log(
+      "[SpotifyProvider] Fetching tracks for playlist:",
+      _playlistId,
+      "with token:",
+      _token.accessToken,
+    );
     throw new Error("SpotifyProvider.getPlaylistTracks not yet implemented");
   }
 
@@ -195,9 +211,75 @@ export class SpotifyProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
-    // TODO: GET `${SPOTIFY_API_BASE}/search?type=track&q=...`
-    //   Build the query as `track:"<title>" artist:"<artist>"` for best precision.
-    throw new Error("SpotifyProvider.searchTrack not yet implemented");
+    // Build Spotify's field-filtered query for best precision
+    // e.g. track:"Ghodey Pe Sawaar" artist:"Amit Trivedi"
+    const q = `track:"${_query.title}" artist:"${_query.artist}"`;
+
+    const params = new URLSearchParams({
+      track: _query.title,
+      artist: _query.artist,
+    });
+
+    const res = await fetch(`${SPOTIFY_API_BASE}/search?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${_token.accessToken}`,
+        Accept: "application/json",
+      },
+    });
+
+    console.log("Header--", res.headers);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Spotify search failed: ${errorText}`);
+    }
+
+    const data = await res.json();
+    let items = data?.tracks?.items ?? [];
+
+    // If strict search found nothing, retry with title only
+    // (helps with YouTube tracks where artist = channel name)
+    if (items.length === 0 && _query.artist) {
+      const fallbackParams = new URLSearchParams({
+        type: "track",
+        q: _query.title,
+        limit: "5",
+      });
+
+      const fallbackRes = await fetch(
+        `${SPOTIFY_API_BASE}/search?${fallbackParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${_token.accessToken}`,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        items = fallbackData?.tracks?.items ?? [];
+      }
+    }
+    return items.map(
+      (track: {
+        id: string;
+        name: string;
+        artists: { name: string }[];
+        album: { name: string };
+        duration_ms: number;
+        external_ids?: { isrc?: string };
+      }): ProviderTrack => ({
+        providerId: track.id,
+        provider: "spotify",
+        title: track.name,
+        artist: track.artists[0]?.name ?? "",
+        featuredArtists: track.artists.slice(1).map((a) => a.name),
+        album: track.album?.name,
+        durationSeconds: Math.round(track.duration_ms / 1000),
+        isrc: track.external_ids?.isrc,
+        rawSourceText: track.name,
+      }),
+    );
   }
 
   async createPlaylist(
@@ -205,9 +287,62 @@ export class SpotifyProvider implements MusicProvider {
     _name: string,
     _description?: string,
   ): Promise<string> {
-    // TODO: POST `${SPOTIFY_API_BASE}/users/{user_id}/playlists`
-    //   Need the user's Spotify ID first — GET /me to fetch it.
-    throw new Error("SpotifyProvider.createPlaylist not yet implemented");
+    // FETCH THE USERID FIRST
+    const userId = await this.getUserId(_token);
+    console.log("userId", userId);
+    try {
+      const url = `${SPOTIFY_API_BASE}/users/${userId}/playlists}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${_token.accessToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: _name,
+          description: _description,
+          public: false,
+        }),
+      });
+
+      console.log("Res--", res);
+      if (!res.ok) {
+        let errorDetails = "";
+        try {
+          const errData = await res.json();
+          errorDetails = errData.error?.message
+            ? `: ${errData.error.message}`
+            : "";
+        } catch {
+          errorDetails = ` (Raw Status text: ${res.statusText})`;
+        }
+        throw new Error(
+          `Spotify API error (Status ${res.status})${errorDetails}`,
+        );
+      }
+
+      // 5. Parse and validate the response payload
+      let data: SpotifyPlaylistResponse;
+      try {
+        data = await res.json();
+        console.log("----", data);
+      } catch {
+        throw new Error("Failed to parse playlist response as JSON.");
+      }
+
+      if (!data || typeof data.id !== "string") {
+        throw new Error(
+          "Spotify playlist creation response is missing a valid 'id'.",
+        );
+      }
+
+      // 6. Return the newly created playlist's ID
+      return data.id;
+    } catch (error) {
+      console.error("Error inside SpotifyProvider.createPlaylist:", error);
+      throw error;
+    }
   }
 
   async addTracksToPlaylist(
@@ -218,5 +353,79 @@ export class SpotifyProvider implements MusicProvider {
     // TODO: POST `${SPOTIFY_API_BASE}/playlists/{id}/tracks`
     //   Spotify caps this at 100 track URIs per request — chunk the array.
     throw new Error("SpotifyProvider.addTracksToPlaylist not yet implemented");
+  }
+
+  private async getUserId(_token: ProviderAuthToken): Promise<string> {
+    // Ensure the token exists before making the call
+    if (!_token?.accessToken) {
+      throw new Error("Spotify authentication failed: Missing access token.");
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
+    try {
+      const url = `${SPOTIFY_API_BASE}/me`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${_token.accessToken}`,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      });
+      // Clear timeout if fetch resolves in time
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        let errorDetails = "";
+        try {
+          // Try parsing Spotify's standard error object
+          const errData = await res.json();
+          errorDetails = errData.error?.message
+            ? `: ${errData.error.message}`
+            : "";
+        } catch {
+          errorDetails = ` (Raw Status text: ${res.statusText})`;
+        }
+        throw new Error(
+          `Spotify API error (Status ${res.status})${errorDetails}`,
+        );
+      }
+
+      // Handle edge case: empty body or success status with no JSON
+      if (res.status === 204) {
+        throw new Error(
+          "Spotify API returned an empty response (204 No Content).",
+        );
+      }
+
+      // Safely parse JSON to prevent crashes on bad data
+      let data: SpotifyUserProfile;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Failed to parse Spotify API response as JSON.");
+      }
+
+      // Explicitly validate that the 'id' field is present
+      if (!data || typeof data.id !== "string") {
+        throw new Error(
+          "Spotify profile response is missing a valid user 'id'.",
+        );
+      }
+
+      return data.account_id;
+    } catch (error: any) {
+      // Make sure timeout cleanup happens even if fetch throws before clearing it
+      clearTimeout(timeoutId);
+
+      if (error.name === "AbortController") {
+        throw new Error("Spotify API request timed out after 10 seconds.");
+      }
+
+      // Bubble up the error with standard error tracing
+      throw new Error(`getUserId failed: ${error.message || error}`);
+    }
   }
 }

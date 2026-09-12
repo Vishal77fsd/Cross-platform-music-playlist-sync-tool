@@ -45,7 +45,7 @@ export interface ProviderPlaylist {
 }
 
 /** Registry of supported provider names. Add new providers here first. */
-export type ProviderName = "spotify" | "ytmusic" | "apple_music";
+export type ProviderName = "spotify" | "ytmusic";
 
 /** OAuth token bundle stored per-user, per-provider. */
 export interface ProviderAuthToken {
@@ -77,4 +77,15 @@ export interface TransferJobResult {
   unmatched: MatchResult[];
   status: "pending" | "running" | "completed" | "failed";
   error?: string;
+}
+
+// Define a strict interface for the expected Spotify response
+export interface SpotifyUserProfile {
+  id: string;
+  [key: string]: any; // Allows other fields without breaking
+}
+
+export interface SpotifyPlaylistResponse {
+  id: string;
+  [key: string]: any; // Allows other fields without breaking
 }

@@ -37,7 +37,7 @@ export default function StepPickPlaylist({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setPlaylists(
             data.playlists.map((p: any) => ({
-              id: p.providerId,
+              id: p.providerId || p.id,
               name: p.name,
               trackCount: p.trackCount,
               image: p.imageUrl,
