@@ -216,8 +216,8 @@ export class SpotifyProvider implements MusicProvider {
     const q = `track:"${_query.title}" artist:"${_query.artist}"`;
 
     const params = new URLSearchParams({
-      track: _query.title,
-      artist: _query.artist,
+      type: "track",
+      q
     });
 
     const res = await fetch(`${SPOTIFY_API_BASE}/search?${params.toString()}`, {
@@ -288,10 +288,9 @@ export class SpotifyProvider implements MusicProvider {
     _description?: string,
   ): Promise<string> {
     // FETCH THE USERID FIRST
-    const userId = await this.getUserId(_token);
-    console.log("userId", userId);
+    // const userId = await this.getUserId(_token);
     try {
-      const url = `${SPOTIFY_API_BASE}/users/${userId}/playlists}`;
+      const url = `${SPOTIFY_API_BASE}/me/playlists`;
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -306,7 +305,6 @@ export class SpotifyProvider implements MusicProvider {
         }),
       });
 
-      console.log("Res--", res);
       if (!res.ok) {
         let errorDetails = "";
         try {
