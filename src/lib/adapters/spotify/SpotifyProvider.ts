@@ -217,7 +217,7 @@ export class SpotifyProvider implements MusicProvider {
 
     const params = new URLSearchParams({
       type: "track",
-      q
+      q,
     });
 
     const res = await fetch(`${SPOTIFY_API_BASE}/search?${params.toString()}`, {
@@ -348,9 +348,58 @@ export class SpotifyProvider implements MusicProvider {
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
-    // TODO: POST `${SPOTIFY_API_BASE}/playlists/{id}/tracks`
     //   Spotify caps this at 100 track URIs per request — chunk the array.
-    throw new Error("SpotifyProvider.addTracksToPlaylist not yet implemented");
+    const url = `${SPOTIFY_API_BASE}/playlists/${_playlistId}/items`;
+
+    try {
+      // 1. Convert simple track IDs into Spotify URIs
+      const trackUris = _trackProviderIds.map((id) => `spotify:track:${id}`);
+
+      // 2. Chunk the URIs into arrays of max 100 items each
+      const chunkSize = 100;
+      const chunks: string[][] = [];
+      for (let i = 0; i < trackUris.length; i += chunkSize) {
+        chunks.push(trackUris.slice(i, i + chunkSize));
+      }
+
+      // 3. Process each batch sequentially or in parallel
+      for (const chunk of chunks) {
+        console.log("Processed Chunk", JSON.stringify({ uris: chunk }));
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${_token.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uris: chunk,
+          }),
+        });
+
+        if (!res.ok) {
+          let errorDetails = "";
+          try {
+            const errData = await res.json();
+            errorDetails = errData.error?.message
+              ? `: ${errData.error.message}`
+              : "";
+          } catch {
+            errorDetails = ` (Raw Status text: ${res.statusText})`;
+          }
+          throw new Error(
+            `Spotify API error (Status ${res.status})${errorDetails}`,
+          );
+        }
+
+        // Spotify returns a snapshot_id on success
+        const data = await res.json();
+      }
+    } catch (error) {
+      console.error("Error while adding tracks in playlist", error);
+      throw new Error(
+        "Error while adding tracks in playlist. See server logs for details.",
+      );
+    }
   }
 
   private async getUserId(_token: ProviderAuthToken): Promise<string> {
