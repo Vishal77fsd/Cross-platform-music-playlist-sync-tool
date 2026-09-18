@@ -227,7 +227,6 @@ export class SpotifyProvider implements MusicProvider {
       },
     });
 
-    console.log("Header--", res.headers);
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Spotify search failed: ${errorText}`);
@@ -324,7 +323,6 @@ export class SpotifyProvider implements MusicProvider {
       let data: SpotifyPlaylistResponse;
       try {
         data = await res.json();
-        console.log("----", data);
       } catch {
         throw new Error("Failed to parse playlist response as JSON.");
       }
@@ -364,7 +362,6 @@ export class SpotifyProvider implements MusicProvider {
 
       // 3. Process each batch sequentially or in parallel
       for (const chunk of chunks) {
-        console.log("Processed Chunk", JSON.stringify({ uris: chunk }));
         const res = await fetch(url, {
           method: "POST",
           headers: {

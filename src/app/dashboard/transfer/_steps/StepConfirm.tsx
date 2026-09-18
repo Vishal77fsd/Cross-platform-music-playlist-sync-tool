@@ -16,6 +16,13 @@ export default function StepConfirm({ transfer, onBack, onReset }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [jobId, setJobId] = useState("");
+  const [result, setResult] = useState<{} | null>(null);
+  const [progress, setProgress] = useState<{
+    total: number;
+    matched: number;
+    unmatched: number;
+    percent: number;
+  } | null>(null);
 
   async function handleTransfer() {
     setStatus("running");
@@ -28,6 +35,7 @@ export default function StepConfirm({ transfer, onBack, onReset }: Props) {
         body: JSON.stringify({
           sourcePlatform: transfer.sourcePlatform,
           playlistId: transfer.playlistId,
+          playlistName: transfer.playlistName,
           destinationPlatform: transfer.destinationPlatform,
         }),
       });
@@ -35,13 +43,51 @@ export default function StepConfirm({ transfer, onBack, onReset }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error ?? "Transfer failed. Please try again.");
+        setErrorMessage(data.error ?? "Failed to start transfer.");
         setStatus("error");
         return;
       }
 
-      setJobId(data.jobId);
-      setStatus("done");
+      const jobId = data.jobId;
+
+      // Poll every 2 seconds until done
+      const interval = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/transfer/${jobId}`);
+          const pollData = await pollRes.json();
+
+          // Update live progress
+          if (pollData.totalTracks > 0) {
+            setProgress({
+              total: pollData.totalTracks,
+              matched: pollData.matchedCount,
+              unmatched: pollData.unmatchedCount,
+              percent: pollData.matchPercent,
+            });
+          }
+
+          if (pollData.status === "completed") {
+            clearInterval(interval);
+            setResult({
+              matchedCount: pollData.matchedCount,
+              unmatchedCount: pollData.unmatchedCount,
+              totalTracks: pollData.totalTracks,
+              matchPercent: pollData.matchPercent,
+              unmatched: pollData.unmatchedTracks ?? [],
+            });
+            setStatus("done");
+          } else if (pollData.status === "failed") {
+            clearInterval(interval);
+            setErrorMessage(pollData.error ?? "Transfer failed.");
+            setStatus("error");
+          }
+        } catch(error) {
+          clearInterval(interval);
+          console.log(error);
+          setErrorMessage(`Lost connection while tracking progress. Error : ${error}`);
+          setStatus("error");
+        }
+      }, 2000);
     } catch {
       setErrorMessage("Couldn't reach the server. Check your connection.");
       setStatus("error");
@@ -120,7 +166,21 @@ export default function StepConfirm({ transfer, onBack, onReset }: Props) {
       </div>
 
       {errorMessage && <p className={styles.errorText}>{errorMessage}</p>}
-
+      {status === "running" && (
+        <div className={styles.progressWrap}>
+          <div className={styles.progressBar}>
+            <div
+              className={styles.progressFill}
+              style={{ width: progress ? `${progress.percent}%` : "0%" }}
+            />
+          </div>
+          <p className={styles.progressText}>
+            {progress
+              ? `${progress.matched} of ${progress.total} tracks matched…`
+              : "Starting transfer…"}
+          </p>
+        </div>
+      )}
       <div className={styles.confirmActions}>
         <button
           className={styles.primaryButton}
