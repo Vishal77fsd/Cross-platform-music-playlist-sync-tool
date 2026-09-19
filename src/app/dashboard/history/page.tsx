@@ -1,21 +1,59 @@
+"use client";
+import { useEffect, useState } from "react";
 import styles from "./page.module.css";
+import { TranferJobSummary } from "@/lib/types/domain";
 
-// Placeholder type — replace with real DB query later
-interface TransferJob {
-  id: string;
-  from: string;
-  to: string;
-  playlist: string;
-  matched: number;
-  total: number;
-  status: "completed" | "partial" | "failed";
-  date: string;
+function formatDate(date: string) {
+  console.log("DATE:", typeof date);
+  return new Date(date).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
-
-const EMPTY: TransferJob[] = [];
-
 export default function HistoryPage() {
-  const jobs = EMPTY;
+  const [jobs, setJobs] = useState<TranferJobSummary[]>([]);
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    // A flag to prevent setting state if the component unmounts during the API call
+    let isMounted = true;
+
+    async function fetchJobs() {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const res = await fetch(`/api/history`);
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch history (${res.status})`);
+        }
+
+        const data = await res.json();
+
+        if (isMounted) {
+          setJobs(data.jobs || []);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || "An unexpected error occurred.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchJobs();
+
+    // Clean-up function sets the flag to false if user leaves the page early
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -27,7 +65,31 @@ export default function HistoryPage() {
         </p>
       </div>
 
-      {jobs.length === 0 ? (
+      {/* 3. Handle loading state cleanly */}
+      {isLoading ? (
+        <div className={styles.emptyState}>
+          <p className={styles.emptyText}>Loading your transfers...</p>
+        </div>
+      ) : error ? (
+        /* 4. Handle error state cleanly */
+        <div className={styles.emptyState}>
+          <span
+            className={styles.emptyIcon}
+            style={{ color: "var(--error-color, #ef4444)" }}
+          >
+            ⚠️
+          </span>
+          <p className={styles.emptyText}>Something went wrong</p>
+          <p className={styles.emptySubtext}>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className={styles.emptyLink}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            Try again ↻
+          </button>
+        </div>
+      ) : jobs.length === 0 ? (
         <div className={styles.emptyState}>
           <span className={styles.emptyIcon}>⟳</span>
           <p className={styles.emptyText}>No transfers yet</p>
@@ -46,20 +108,22 @@ export default function HistoryPage() {
             <span>Matched</span>
             <span>Status</span>
             <span>Date</span>
+            <span>Remarks</span>
           </div>
           {jobs.map((job) => (
-            <div key={job.id} className={styles.tableRow}>
-              <span className={styles.playlistName}>{job.playlist}</span>
+            <div key={job.jobId} className={styles.tableRow}>
+              <span className={styles.playlistName}>{job?.playlistName}</span>
               <span className={styles.route}>
-                {job.from} → {job.to}
+                {job.sourcePlatform} → {job.destinationPlatform}
               </span>
               <span className={styles.matched}>
-                {job.matched}/{job.total}
+                {job.matchedCount}/{job.totalTracks}
               </span>
               <span className={`${styles.status} ${styles[job.status]}`}>
                 {job.status}
               </span>
-              <span className={styles.date}>{job.date}</span>
+              <span className={styles.date}>{formatDate(job.createdAt)}</span>
+              <span className={styles.date}>{job.error}</span>
             </div>
           ))}
         </div>

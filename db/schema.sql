@@ -47,6 +47,7 @@ CREATE TABLE
     unmatched_count INT DEFAULT 0,
     unmatched_tracks JSON DEFAULT '[]',
     error TEXT,
+    playlist_name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now (),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now (),
   )

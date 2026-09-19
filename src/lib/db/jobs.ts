@@ -12,6 +12,7 @@ export interface TransferJobRecord {
   unmatchedCount: number;
   unmatchedTracks: { title: string; artist: string }[];
   error: string | null;
+  playlistName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +29,7 @@ function mapRow(row: {
   unmatched_count: number;
   unmatched_tracks: { title: string; artist: string }[];
   error: string | null;
+  playlist_name: string | null;
   created_at: string;
   updated_at: string;
 }): TransferJobRecord {
@@ -43,6 +45,7 @@ function mapRow(row: {
     unmatchedCount: row.unmatched_count,
     unmatchedTracks: row.unmatched_tracks ?? [],
     error: row.error,
+    playlistName: row.playlist_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -53,18 +56,20 @@ export async function createJob(params: {
   sourcePlatform: string;
   destinationPlatform: string;
   sourcePlaylistId: string;
+  playlistName: string;
 }): Promise<TransferJobRecord> {
   const result = await pool.query(
     `
             INSERT INTO transfer_jobs 
-            (user_id, source_platform, destination_platform, source_playlist_id)
-            VALUES ($1, $2, $3, $4)
+            (user_id, source_platform, destination_platform, source_playlist_id, playlist_name)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *`,
     [
       params.userId,
       params.sourcePlatform,
       params.destinationPlatform,
       params.sourcePlaylistId,
+      params.playlistName,
     ],
   );
 

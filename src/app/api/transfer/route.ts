@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     sourcePlatform,
     destinationPlatform,
     sourcePlaylistId: playlistId,
+    playlistName: playlistName ?? "Transferred playlist",
   });
 
   // Fire the worker without awaiting it
