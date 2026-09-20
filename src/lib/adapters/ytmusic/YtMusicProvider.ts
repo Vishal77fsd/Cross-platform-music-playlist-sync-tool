@@ -8,7 +8,7 @@ import type { MusicProvider } from "../../core/MusicProvider";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://googleapis.com";
-const YOUTUBE_API_BASE = "https://googleapis.com";
+const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 /**
  * YouTube Music adapter.
  *
@@ -268,9 +268,56 @@ export class YtMusicProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
-    // TODO: GET https://www.googleapis.com/youtube/v3/search?type=video&videoCategoryId=10&q=...
-    //   videoCategoryId=10 filters to the "Music" category.
-    throw new Error("YtMusicProvider.searchTrack not yet implemented");
+    const searchQuery = _query.artist
+      ? `${_query.title} ${_query.artist}`
+      : `${_query.title}`;
+    const url = `${YOUTUBE_API_BASE}/search?type=video&videoCategoryId=10&part=snippet&q=${_query.title}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${_token.accessToken}`,
+          Accept: "application/json",
+          "Content-type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          `Youtube API responded with status ${res.status}:${JSON.stringify(errorData)}`,
+        );
+      }
+      const data = await res.json();
+
+      if (!data.items || !Array.isArray(data.items)) {
+        return [];
+      }
+
+      return data.items.map((item: any) => {
+        const rawArtist = item.snippet.channelTitle || "";
+        const cleanedArtist = rawArtist.endsWith("VEVO")
+          ? rawArtist.slice(0, -4)
+          : rawArtist;
+
+        return {
+          provider: "ytmusic",
+          providerId: item.id.videoId,
+          title: item.snippet.title,
+          artist: cleanedArtist || _query.artist,
+          rawSourceText: item.snippet.title,
+        };
+      });
+    } catch (err: any) {
+      console.error(
+        "Error occurred while searching track in YT:",
+        err.message || err,
+      );
+      throw new Error(
+        `Error Occurred while fetching from YouTube: ${err.message || err}`,
+      );
+    }
   }
 
   async createPlaylist(
@@ -279,6 +326,10 @@ export class YtMusicProvider implements MusicProvider {
     _description?: string,
   ): Promise<string> {
     // TODO: POST https://www.googleapis.com/youtube/v3/playlists?part=snippet
+
+    console.log("Create Playlist With", _name);
+    console.log("Create Playlist With", _description);
+    
     throw new Error("YtMusicProvider.createPlaylist not yet implemented");
   }
 

@@ -186,25 +186,56 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async getPlaylistTracks(
-    _token: ProviderAuthToken,
-    _playlistId: string,
+    token: ProviderAuthToken,
+    playlistId: string,
   ): Promise<ProviderTrack[]> {
-    // TODO: GET `${SPOTIFY_API_BASE}/playlists/{id}/tracks` (100 per page, paginated)
+    const tracks: ProviderTrack[] = [];
+    let url: string | null =
+      `${SPOTIFY_API_BASE}/playlists/${playlistId}/items?limit=100`;
 
-    try {
-    } catch (error) {
-      console.error("Error fetching Spotify playlist tracks:", error);
-      throw new Error(
-        "Failed to fetch Spotify playlist tracks. See server logs for details.",
-      );
+    while (url) {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Spotify getPlaylistTracks failed: ${errorText}`);
+      }
+
+      const data = await res.json();
+
+      for (const item of data.items ?? []) {
+        const track = item.item;
+
+        // Skip nulls, podcasts, episodes — only want tracks
+        if (!track || track.type !== "track") continue;
+        if (item.is_local) continue; // local files have no Spotify ID
+
+        tracks.push({
+          providerId: track.id,
+          provider: "spotify",
+          title: track.name,
+          artist: track.artists?.[0]?.name ?? "",
+          featuredArtists:
+            track.artists?.slice(1).map((a: { name: string }) => a.name) ?? [],
+          album: track.album?.name,
+          durationSeconds: track.duration_ms
+            ? Math.round(track.duration_ms / 1000)
+            : undefined,
+          isrc: track.external_ids?.isrc,
+          rawSourceText: track.name,
+        });
+      }
+
+      // Spotify gives the next page as a full URL — null when no more pages
+      url = data.next ?? null;
     }
-    console.log(
-      "[SpotifyProvider] Fetching tracks for playlist:",
-      _playlistId,
-      "with token:",
-      _token.accessToken,
-    );
-    throw new Error("SpotifyProvider.getPlaylistTracks not yet implemented");
+
+    return tracks;
   }
 
   async searchTrack(
