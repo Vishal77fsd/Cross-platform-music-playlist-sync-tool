@@ -271,7 +271,7 @@ export class YtMusicProvider implements MusicProvider {
     const searchQuery = _query.artist
       ? `${_query.title} ${_query.artist}`
       : `${_query.title}`;
-    const url = `${YOUTUBE_API_BASE}/search?type=video&videoCategoryId=10&part=snippet&q=${_query.title}`;
+    const url = `${YOUTUBE_API_BASE}/search?type=video&videoCategoryId=10&part=snippet&q=${searchQuery}`;
 
     try {
       const res = await fetch(url, {
@@ -325,23 +325,103 @@ export class YtMusicProvider implements MusicProvider {
     _name: string,
     _description?: string,
   ): Promise<string> {
-    // TODO: POST https://www.googleapis.com/youtube/v3/playlists?part=snippet
+    const url = `${YOUTUBE_API_BASE}/playlists?part=snippet`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${_token.accessToken}`,
+          "Content-Type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          snippet: {
+            title: _name,
+            description: _description || "",
+          },
+        }),
+      });
 
-    console.log("Create Playlist With", _name);
-    console.log("Create Playlist With", _description);
-    
-    throw new Error("YtMusicProvider.createPlaylist not yet implemented");
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("YouTube API Error:", data.error?.message || data);
+        throw new Error(data.error?.message || "Failed to create playlist");
+      }
+
+      console.log("DDATAA", data);
+      return data.id;
+    } catch (err: any) {
+      console.error(
+        "Error occurred while creating playlist on YT:",
+        err.message || err,
+      );
+      throw new Error(
+        `Error occurred while creating playlist on YT: ${err.message || err}`,
+      );
+    }
   }
+  // Helper utility to pause execution between requests to respect rate limits
+  sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   async addTracksToPlaylist(
     _token: ProviderAuthToken,
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
-    // TODO: POST https://www.googleapis.com/youtube/v3/playlistItems?part=snippet
-    //   No batch endpoint here — one request per video, so this loop
-    //   will need its own rate-limit handling (YouTube quota is tight).
-    throw new Error("YtMusicProvider.addTracksToPlaylist not yet implemented");
+    if (!_playlistId) {
+      throw new Error("Playlist ID not provided.");
+    }
+
+    if (!_trackProviderIds || _trackProviderIds.length === 0) {
+      console.warn("No tracks provided to add to the playlist.");
+      return;
+    }
+
+    const url = `${YOUTUBE_API_BASE}/playlistItems?part=snippet`;
+
+    for (const trackId of _trackProviderIds) {
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${_token.accessToken}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            snippet: {
+              playlistId: _playlistId,
+              resourceId: {
+                kind: "youtube#video",
+                videoId: trackId,
+              },
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            `YouTube API responded with status ${response.status}: ${
+              errorData.error?.message || response.statusText
+            }`,
+          );
+        }
+
+        // Optional: Wait 200ms between requests to avoid hitting rate limits too quickly
+        await this.sleep(200);
+      } catch (err: any) {
+        console.error(
+          `Error occurred while adding track ${trackId} to YT playlist:`,
+          err.message || err,
+        );
+        // Decide if you want to fail the whole operation or continue with the remaining tracks
+        throw new Error(`Failed to populate playlist: ${err.message || err}`);
+      }
+    }
+    console.log(
+      `Successfully added ${_trackProviderIds.length} tracks to playlist: ${_playlistId}`,
+    );
   }
 
   /** HELPERS FUNCTION **/

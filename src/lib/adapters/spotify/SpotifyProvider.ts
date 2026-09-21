@@ -37,7 +37,7 @@ export class SpotifyProvider implements MusicProvider {
       response_type: "code",
       redirect_uri: this.redirectUri,
       scope:
-        "playlist-read-private playlist-modify-public playlist-modify-private user-read-private",
+        "playlist-read-private playlist-modify-public playlist-modify-private user-read-private playlist-read-collaborative",
       state,
       show_dialog: "true",
     });
@@ -186,34 +186,48 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async getPlaylistTracks(
-    token: ProviderAuthToken,
-    playlistId: string,
+    _token: ProviderAuthToken,
+    _playlistId: string,
   ): Promise<ProviderTrack[]> {
     const tracks: ProviderTrack[] = [];
-    let url: string | null =
-      `${SPOTIFY_API_BASE}/playlists/${playlistId}/items?limit=100`;
 
+    let url: string | null =
+      `${SPOTIFY_API_BASE}/playlists/${_playlistId}/items?limit=10`;
     while (url) {
       const res = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token.accessToken}`,
+          Authorization: `Bearer ${_token.accessToken}`,
           Accept: "application/json",
         },
       });
 
+      // Read body ONCE
+      const body = await res.text();
+
+
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Spotify getPlaylistTracks failed: ${errorText}`);
+        throw new Error(
+          `Spotify getPlaylistTracks failed: ${res.status} ${res.statusText}: ${body}`,
+        );
       }
 
-      const data = await res.json();
+      const data = JSON.parse(body);
+
+      console.log("items:", data.items?.length);
+      console.log("next:", data.next);
 
       for (const item of data.items ?? []) {
         const track = item.item;
 
-        // Skip nulls, podcasts, episodes — only want tracks
-        if (!track || track.type !== "track") continue;
-        if (item.is_local) continue; // local files have no Spotify ID
+        // Skip nulls, podcasts, episodes
+        if (!track || track.type !== "track") {
+          continue;
+        }
+
+        // Skip local files
+        if (item.is_local) {
+          continue;
+        }
 
         tracks.push({
           providerId: track.id,
@@ -231,7 +245,6 @@ export class SpotifyProvider implements MusicProvider {
         });
       }
 
-      // Spotify gives the next page as a full URL — null when no more pages
       url = data.next ?? null;
     }
 
