@@ -97,7 +97,6 @@
   flex: 1;
   padding: 40px 48px;
   overflow-y: auto;
-  border: 1px solid red;
 }
 
 /* Responsive — collapse sidebar on small screens */

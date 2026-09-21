@@ -113,13 +113,27 @@ export default function HistoryPage() {
           {jobs.map((job) => (
             <div key={job.jobId} className={styles.tableRow}>
               <span className={styles.playlistName}>{job?.playlistName}</span>
-              <span className={styles.route}>
-                {job.sourcePlatform} → {job.destinationPlatform}
+              <span className={styles.historyPlatforms}>
+                <span className={styles.platformTag}>{job.sourcePlatform}</span>
+                <span className={styles.historyArrow}>→</span>
+                <span className={styles.platformTag}>
+                  {job.destinationPlatform}
+                </span>
               </span>
               <span className={styles.matched}>
                 {job.matchedCount}/{job.totalTracks}
               </span>
-              <span className={`${styles.status} ${styles[job.status]}`}>
+              <span
+                className={`${styles.historyStatus} ${
+                  job.status === "completed"
+                    ? styles.statusCompleted
+                    : job.status === "failed"
+                      ? styles.statusFailed
+                      : job.status === "running"
+                        ? styles.statusRunning
+                        : styles.statusPending
+                }`}
+              >
                 {job.status}
               </span>
               <span className={styles.date}>{formatDate(job.createdAt)}</span>
