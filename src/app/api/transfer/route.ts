@@ -3,6 +3,7 @@ import { findAccount } from "@/lib/db/accounts";
 import { createJob } from "@/lib/db/jobs";
 import { runTransferJob } from "@/lib/transfer/worker";
 import { type NextRequest, NextResponse } from "next/server";
+import { unstable_after as after } from "next/server";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
@@ -11,19 +12,23 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { sourcePlatform, destinationPlatform, playlistId, playlistName } = body ?? {};
+  const { sourcePlatform, destinationPlatform, playlistId, playlistName } =
+    body ?? {};
 
   if (!sourcePlatform || !destinationPlatform || !playlistId) {
     return NextResponse.json(
-      { error: "sourcePlatform, destinationPlatform and playlistId are required." },
-      { status: 400 }
+      {
+        error:
+          "sourcePlatform, destinationPlatform and playlistId are required.",
+      },
+      { status: 400 },
     );
   }
 
   if (sourcePlatform === destinationPlatform) {
     return NextResponse.json(
       { error: "Source and destination platforms must be different." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -36,14 +41,14 @@ export async function POST(req: NextRequest) {
   if (!sourceAccount) {
     return NextResponse.json(
       { error: `${sourcePlatform} is not connected.` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (!destAccount) {
     return NextResponse.json(
       { error: `${destinationPlatform} is not connected.` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -58,16 +63,15 @@ export async function POST(req: NextRequest) {
 
   // Fire the worker without awaiting it
   // The HTTP response returns while this runs in the background
-  runTransferJob({
-    jobId: job.id,
-    userId: session.userId,
-    sourcePlatform,
-    destinationPlatform,
-    sourcePlaylistId: playlistId,
-    playlistName: playlistName ?? "Transferred playlist",
-  }).catch((err) => {
-    // Last-resort catch — worker already handles its own errors internally
-    console.error(`[transfer] worker crashed outside try/catch:`, err);
+  after(async () => {
+    await runTransferJob({
+      jobId: job.id,
+      userId: session.userId,
+      sourcePlatform,
+      destinationPlatform,
+      sourcePlaylistId: playlistId,
+      playlistName: playlistName ?? "Transferred playlist",
+    });
   });
 
   // Return immediately — frontend polls /api/transfer/[jobId] for progress
