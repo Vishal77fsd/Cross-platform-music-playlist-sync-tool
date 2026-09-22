@@ -25,10 +25,10 @@ const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 export class SpotifyProvider implements MusicProvider {
   readonly name = "spotify" as const;
 
-  private clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ?? "";
+  private clientId = process.env.SPOTIFY_CLIENT_ID ?? "";
   private clientSecret = process.env.SPOTIFY_CLIENT_SECRET ?? "";
   private redirectUri =
-    process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI ??
+    process.env.SPOTIFY_REDIRECT_URI ??
     "http://localhost:3000/api/auth/spotify/callback";
 
   getAuthorizationUrl(state: string): string {
