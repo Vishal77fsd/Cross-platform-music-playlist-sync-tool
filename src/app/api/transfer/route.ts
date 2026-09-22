@@ -3,7 +3,7 @@ import { findAccount } from "@/lib/db/accounts";
 import { createJob } from "@/lib/db/jobs";
 import { runTransferJob } from "@/lib/transfer/worker";
 import { type NextRequest, NextResponse } from "next/server";
-import { unstable_after as after } from "next/server";
+import { after } from 'next/server'
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
