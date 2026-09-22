@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 
@@ -50,7 +50,7 @@ async function handleDisconnectClick(platformId: string) {
   window.location.reload();
 }
 
-export default function PlatformsPage() {
+function PlatformsPageInner() {
   const searchParams = useSearchParams();
   const connected = searchParams.get("connected");
   const error = searchParams.get("error");
@@ -150,5 +150,13 @@ export default function PlatformsPage() {
         More platforms coming soon — Apple Music, Tidal, Deezer.
       </p>
     </div>
+  );
+}
+
+export default function PlatformsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PlatformsPageInner />
+    </Suspense>
   );
 }

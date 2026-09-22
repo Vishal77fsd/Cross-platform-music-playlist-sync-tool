@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import AuthLayout from "@/components/AuthLayout";
 import formStyles from "@/components/AuthForm.module.css";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 
-export default function LoginPage() {
+function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSignedUp = searchParams.get("is_signedup") === "success";
@@ -125,5 +125,13 @@ export default function LoginPage() {
         </button>
       </div>
     </AuthLayout>
+  );
+}
+// Wrap the form inside the Suspense boundary required by Next.js
+export default function LoginForm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginFormInner />
+    </Suspense>
   );
 }
