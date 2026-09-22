@@ -4,12 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  {
-    params,
-  }: {
-    params: {
-      jobId: string;
-    };
+  context: {
+    params: Promise<{ jobId: string }>;
   },
 ) {
   const session = await getSession(request);
@@ -22,8 +18,8 @@ export async function GET(
       { status: 401 },
     );
   }
-
-  const job = await getJob(params.jobId);
+  const { jobId } = await context.params;
+  const job = await getJob(jobId);
 
   if (!job) {
     return NextResponse.json(

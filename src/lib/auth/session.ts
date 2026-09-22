@@ -34,7 +34,8 @@ export async function createSession(payload: SessionPayload): Promise<void> {
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .sign(getSecretKey());
 
-  cookies().set(COOKIE_NAME, token, {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true, // JS in the browser can't read this cookie
     secure: process.env.NODE_ENV === "production" ? true : false, // HTTPS only in prod
     sameSite: "lax", // sent on normal navigation, blocks most CSRF vectors
@@ -51,10 +52,10 @@ export async function getSession(
   req?: NextRequest,
 ): Promise<SessionPayload | null> {
   console.log("Session cookie value:", req?.cookies.get(COOKIE_NAME)?.value);
-
+  const cookieStore = await cookies();
   const token = req
     ? req.cookies.get(COOKIE_NAME)?.value
-    : cookies().get(COOKIE_NAME)?.value;
+    : cookieStore.get(COOKIE_NAME)?.value;
   if (!token) {
     return null;
   }
@@ -74,6 +75,7 @@ export async function getSession(
 }
 
 /** Clears the session cookie. Call this from a logout route. */
-export function clearSession(): void {
-  cookies().set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
+export async function clearSession(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
 }
