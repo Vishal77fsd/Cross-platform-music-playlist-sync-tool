@@ -12,7 +12,7 @@ import type { AccountRecord } from "@/lib/db/accounts";
 
 export async function getValidToken(
   account: AccountRecord,
-): Promise<ProviderAuthToken | null> {
+): Promise<ProviderAuthToken> {
   const expiresAt = account.expiresAt
     ? new Date(account.expiresAt).getTime()
     : null;
