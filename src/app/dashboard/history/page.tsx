@@ -4,7 +4,6 @@ import styles from "./page.module.css";
 import { TranferJobSummary } from "@/lib/types/domain";
 
 function formatDate(date: string) {
-  console.log("DATE:", typeof date);
   return new Date(date).toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     dateStyle: "short",

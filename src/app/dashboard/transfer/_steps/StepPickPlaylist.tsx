@@ -9,7 +9,7 @@ interface Playlist {
   name: string;
   trackCount: number;
   image?: string;
-  images?: Object[]; // For Spotify playlists, which have an array of images
+  images?: any; // For Spotify playlists, which have an array of images
 }
 
 interface Props {

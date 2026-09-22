@@ -83,7 +83,7 @@ export interface TranferJobSummary extends TransferJobResult {
   playlistName?: string;
   sourcePlatform?: string;
   destinationPlatform?: string;
-  createdAt?: string;
+  createdAt: string;
   matchedCount?: number;
 }
 // Define a strict interface for the expected Spotify response
