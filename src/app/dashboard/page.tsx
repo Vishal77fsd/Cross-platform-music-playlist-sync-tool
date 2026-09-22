@@ -81,7 +81,7 @@ export default function DashboardPage() {
                   className={styles.platformDot}
                   style={{ background: "#ff0033" }}
                 />
-                <span className={styles.platformName}>YouTube Music</span>
+                <span className={styles.platformName}>YouTube</span>
               </div>
               <span className={styles.platformStatus}>
                 {connectAccounts?.ytmusic ? `Connected` : `Not connected`}

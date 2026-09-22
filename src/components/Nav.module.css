@@ -5,6 +5,8 @@
   max-width: 1080px;
   margin: 0 auto;
   padding: 28px 24px;
+  gap: 30px;
+  flex-direction: column;
 }
 
 .wordmark {

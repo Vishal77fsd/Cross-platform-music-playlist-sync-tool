@@ -62,7 +62,7 @@ export default function HomePage() {
         <h2 className={styles.sectionLabel}>Works with</h2>
         <div className={styles.platformList}>
           <span className={styles.platformBadge}>Spotify</span>
-          <span className={styles.platformBadge}>YouTube Music</span>
+          <span className={styles.platformBadge}>YouTube</span>
           <span className={styles.platformBadgeMuted}>More on the way</span>
         </div>
       </section>

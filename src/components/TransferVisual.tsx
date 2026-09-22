@@ -18,7 +18,7 @@ export default function TransferVisual() {
     <div className={styles.wrap} role="img" aria-label="Three tracks shown migrating from one platform to another">
       <div className={styles.columnLabels}>
         <span>Spotify</span>
-        <span>YouTube Music</span>
+        <span>YouTube</span>
       </div>
       {rows.map((row) => (
         <div className={styles.row} key={row.title}>
