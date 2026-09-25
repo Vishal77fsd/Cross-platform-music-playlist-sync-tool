@@ -125,8 +125,8 @@ export default function DashboardPage() {
                 <span>Status</span>
                 <span>Date</span>
               </div>
-              {transferHistory.map((job) => (
-                <div key={job.jobId} className={styles.historyRow}>
+              {transferHistory.map((job, index) => (
+                <div key={index} className={styles.historyRow}>
                   <div className={styles.historyPlatforms}>
                     <span className={styles.platformTag}>
                       {job.sourcePlatform}

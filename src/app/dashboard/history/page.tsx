@@ -109,8 +109,8 @@ export default function HistoryPage() {
             <span>Date</span>
             <span>Remarks</span>
           </div>
-          {jobs.map((job) => (
-            <div key={job.jobId} className={styles.tableRow}>
+          {jobs.map((job, index) => (
+            <div key={index} className={styles.tableRow}>
               <span className={styles.playlistName}>{job?.playlistName}</span>
               <span className={styles.historyPlatforms}>
                 <span className={styles.platformTag}>{job.sourcePlatform}</span>

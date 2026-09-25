@@ -1,9 +1,9 @@
+import { inngest } from "@/inngest/client";
 import { getSession } from "@/lib/auth/session";
 import { findAccount } from "@/lib/db/accounts";
 import { createJob } from "@/lib/db/jobs";
 import { runTransferJob } from "@/lib/transfer/worker";
-import { type NextRequest, NextResponse } from "next/server";
-import { after } from 'next/server'
+import { after, type NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
@@ -61,17 +61,17 @@ export async function POST(req: NextRequest) {
     playlistName: playlistName ?? "Transferred playlist",
   });
 
-  // Fire the worker without awaiting it
-  // The HTTP response returns while this runs in the background
-  after(async () => {
-    await runTransferJob({
+  // Send event to Inngest — returns immediately
+  await inngest.send({
+    name: "transfer/playlist.start",
+    data: {
       jobId: job.id,
       userId: session.userId,
       sourcePlatform,
       destinationPlatform,
       sourcePlaylistId: playlistId,
       playlistName: playlistName ?? "Transferred playlist",
-    });
+    },
   });
 
   // Return immediately — frontend polls /api/transfer/[jobId] for progress
