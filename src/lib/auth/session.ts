@@ -51,7 +51,6 @@ export async function createSession(payload: SessionPayload): Promise<void> {
 export async function getSession(
   req?: NextRequest,
 ): Promise<SessionPayload | null> {
-  console.log("Session cookie value:", req?.cookies.get(COOKIE_NAME)?.value);
   const cookieStore = await cookies();
   const token = req
     ? req.cookies.get(COOKIE_NAME)?.value

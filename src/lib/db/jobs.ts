@@ -1,12 +1,19 @@
 import { pool } from "./pool";
 
+const LIMIT = 5; // Limit the number of jobs returned for a user
 export interface TransferJobRecord {
   id: string;
   userId: string;
   sourcePlatform: string;
   destinationPlatform: string;
   sourcePlaylistId: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status:
+    | "pending"
+    | "running"
+    | "completed"
+    | "failed"
+    | "paused"
+    | "partial_completed";
   totalTracks: number;
   matchedCount: number;
   unmatchedCount: number;
@@ -15,6 +22,16 @@ export interface TransferJobRecord {
   playlistName: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface PaginatedJobs {
+  data: TransferJobRecord[];
+  meta: {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
 }
 
 function mapRow(row: {
@@ -86,18 +103,41 @@ export async function getJob(jobId: string): Promise<TransferJobRecord | null> {
 
 export async function getUserJobs(
   userId: string,
-): Promise<TransferJobRecord[]> {
-  const result = await pool.query(
+  page: number = 1,
+): Promise<PaginatedJobs> {
+  const offset = (page - 1) * LIMIT;
+
+  // 1. Fetch the total count of jobs for this specific user
+  const countResult = await pool.query(
+    `SELECT COUNT(*) FROM transfer_jobs WHERE user_id = $1`,
+    [userId],
+  );
+
+  const totalItems = parseInt(countResult.rows[0].count, 10);
+
+  // 2. Fetch the paginated rows
+  const dataResult = await pool.query(
     `
         SELECT * FROM transfer_jobs
         WHERE user_id = $1
         ORDER BY created_at DESC
-        LIMIT 20
+        LIMIT ${LIMIT} OFFSET $2
         `,
-    [userId],
+    [userId, offset],
   );
 
-  return result.rows.map(mapRow);
+  // 3. Calculate total pages (math ceiling ensures a partial page counts as a full page)
+  const totalPages = Math.ceil(totalItems / LIMIT);
+
+  return {
+    data: dataResult.rows.map(mapRow),
+    meta: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      limit: LIMIT,
+    },
+  };
 }
 
 export async function updateJob(

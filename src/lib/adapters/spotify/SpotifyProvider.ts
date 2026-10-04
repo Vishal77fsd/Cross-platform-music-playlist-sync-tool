@@ -164,6 +164,8 @@ export class SpotifyProvider implements MusicProvider {
       }
 
       const data = await res.json();
+
+      console.log("Fetched Spotify playlists page:", data.items);
       // Map Spotify's playlist items to your internal ProviderPlaylist structure
       if (data.items && Array.isArray(data.items)) {
         for (const item of data.items) {
@@ -172,7 +174,7 @@ export class SpotifyProvider implements MusicProvider {
             provider: this.name, // "spotify"
             name: item.name,
             description: item.description ?? "",
-            trackCount: item.tracks?.total ?? 0,
+            trackCount: item.tracks?.total || item?.items?.total ||0,
             imageUrl: item.images?.[0]?.url, // Grabs the first available image URL
           });
         }
@@ -203,7 +205,6 @@ export class SpotifyProvider implements MusicProvider {
 
       // Read body ONCE
       const body = await res.text();
-
 
       if (!res.ok) {
         throw new Error(
@@ -271,6 +272,12 @@ export class SpotifyProvider implements MusicProvider {
       },
     });
 
+    // Handle 429 Rate Limits cleanly
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("retry-after") || "1";
+      console.warn(`Spotify rate limit exceeded. Retry after ${retryAfter} seconds.`);
+      throw new Error(`RATE_LIMIT_EXCEEDED:${retryAfter}`);
+    }
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Spotify search failed: ${errorText}`);

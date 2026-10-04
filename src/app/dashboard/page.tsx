@@ -38,7 +38,7 @@ export default function DashboardPage() {
         throw new Error("Failed to fetch transfer history");
       }
       const data = await res.json();
-      setTransferHistory(data.jobs.slice(0, 5));
+      setTransferHistory(data.jobs.data.slice(0, 5));
     } catch (err) {
       console.error("Something went wrong:", err);
       setError("Could not load tranfer history.");
@@ -143,11 +143,13 @@ export default function DashboardPage() {
                     <div className={styles.historyMatchBar}>
                       <div
                         className={styles.historyMatchFill}
-                        style={{ width: `${job.totalTracks}%` }}
+                        style={{ width: `${Math.round((job.matchedCount / job.totalTracks) * 100)}%` }}
                       />
                     </div>
                     <span className={styles.historyMatchPercent}>
-                      {job.matchedCount}%
+                      {job.totalTracks > 0
+                        ? `${Math.round((job.matchedCount / job.totalTracks) * 100)}%`
+                        : "0%"}
                     </span>
                   </div>
                   <span

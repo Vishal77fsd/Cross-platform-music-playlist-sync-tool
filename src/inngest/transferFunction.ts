@@ -7,6 +7,9 @@ import type { MusicProvider } from "@/lib/core/MusicProvider";
 import type { ProviderAuthToken } from "@/lib/types/domain";
 import type { AccountRecord } from "@/lib/db/accounts";
 
+// Helper utility to introduce micro-delays between parallel tasks
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function makeProvider(platform: string): MusicProvider {
   if (platform === "spotify") return new SpotifyProvider();
   if (platform === "ytmusic") return new YtMusicProvider();
@@ -53,25 +56,21 @@ async function searchWithRetry(
   track: { title: string; artist: string; rawSourceText: string },
   retries = 2,
 ): Promise<string | null> {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const results = await provider.searchTrack(token, {
-        title: track.title,
-        artist: track.artist,
-        rawSourceText: track.rawSourceText,
-      });
-      return results.length > 0 ? results[0].providerId : null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      const isRateLimit = message.includes("429") || message.includes("rate");
-      if (isRateLimit && attempt < retries - 1) {
-        await new Promise((r) => setTimeout(r, 1000));
-        continue;
-      }
-      return null;
+  try {
+    const results = await provider.searchTrack(token, {
+      title: track.title,
+      artist: track.artist,
+      rawSourceText: track.rawSourceText,
+    });
+    return results.length > 0 ? results[0].providerId : null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    // 🛑 CRITICAL: Bubble rate limits out of searchWithRetry completely!
+    if (message.startsWith("RATE_LIMIT_EXCEEDED:")) {
+      throw err;
     }
+    return null;
   }
-  return null;
 }
 
 export const transferFunction = inngest.createFunction(
@@ -128,32 +127,67 @@ export const transferFunction = inngest.createFunction(
     const matched: string[] = [];
     const unmatched: { title: string; artist: string }[] = [];
 
+    const [destAccount] = await Promise.all([
+      findAccount(userId, destinationPlatform),
+    ]);
+
+    if (!destAccount) throw new Error(`${destinationPlatform} not connected`);
+
+    const destProvider = makeProvider(destinationPlatform);
+    const destToken = await getValidToken(destAccount, destProvider);
+
+    let rateLimitHit = false;
+    let rateLimitMessage = "";
+
     for (let i = 0; i < sourceTracks.length; i += CONCURRENCY) {
       const batch = sourceTracks.slice(i, i + CONCURRENCY);
       const batchIndex = Math.floor(i / CONCURRENCY);
 
-      const batchResult = await step.run(
-        `search-batch-${batchIndex}`,
-        async () => {
-          const [destAccount] = await Promise.all([
-            findAccount(userId, destinationPlatform),
-          ]);
+      let batchResult: (string | null)[] = batch.map(() => null);
 
-          if (!destAccount)
-            throw new Error(`${destinationPlatform} not connected`);
-
-          const destProvider = makeProvider(destinationPlatform);
-          const destToken = await getValidToken(destAccount, destProvider);
-
+      try {
+        batchResult = await step.run(`search-batch-${batchIndex}`, async () => {
           const results = await Promise.all(
-            batch.map((track) =>
-              searchWithRetry(destProvider, destToken, track),
-            ),
+            batch.map(async (track, index) => {
+              await delay(index * 250); // stagger requests to avoid rate limits
+              return await searchWithRetry(destProvider, destToken, track);
+            }),
           );
 
           return results;
-        },
-      );
+        });
+      } catch (err: any) {
+        console.log("error in batch search", err);
+        const msg = err?.message || "";
+        if (msg.startsWith("RATE_LIMIT_EXCEEDED:")) {
+          const windowSeconds = parseInt(msg.split(":")[1], 10) || 60;
+
+          // 1. Flip flag state and store contextual data outside the step execution
+          rateLimitHit = true;
+          rateLimitMessage = `Spotify rate limit hit. Finalising migration early. Please try remaining tracks in ${Math.ceil(windowSeconds / 60)} mins.`;
+
+          // 2. Dump all remaining unsearched tracks from this point forward straight into unmatched
+          const remainingTracks = sourceTracks.slice(i);
+          for (const track of remainingTracks) {
+            unmatched.push({
+              title: track.title,
+              artist: track.artist,
+            });
+          }
+
+          await updateJob(jobId, {
+            status: "failed",
+            matchedCount: matched.length,
+            unmatchedCount: unmatched.length,
+            error: rateLimitMessage,
+          });
+
+          // 3. Break the loop cleanly. No steps are executed inside this catch thread block!
+          break;
+        } else {
+          throw err; // Re-throw unhandled code bugs
+        }
+      }
 
       for (let j = 0; j < batchResult.length; j++) {
         const providerId = batchResult[j];
@@ -172,13 +206,32 @@ export const transferFunction = inngest.createFunction(
         });
       });
 
-      // 30 second gap between batches — but skip the wait after the last batch
+      // Inngest step sleep to provide a cooling down window
       const isLastBatch = i + CONCURRENCY >= sourceTracks.length;
       if (!isLastBatch) {
-        await step.sleep(`cooldown-${batchIndex}`, "30s");
+        // A 3 to 5-second sleep between batches is usually enough when paired with staggered individual track requests
+        await step.sleep(`cooldown-${batchIndex}`, "3s");
       }
     }
 
+    // 1. Check if the loop exited early due to a rate limit
+    if (rateLimitHit) {
+      // If no songs were successfully matched before hitting the limit, fail completely
+      if (matched.length === 0) {
+        await step.run("fail-job-no-matches", async () => {
+          await updateJob(jobId, {
+            status: "failed",
+            error:
+              rateLimitMessage ||
+              "Rate limit hit before any tracks could be matched.",
+            unmatchedTracks: unmatched,
+          });
+        });
+        return; // Exit the Inngest function early
+      }
+    }
+
+    // 2. If it didn't hit a limit, or if it did hit a limit BUT has successfully matched songs, proceed here
     await step.run("create-and-fill-playlist", async () => {
       const [destAccount] = await Promise.all([
         findAccount(userId, destinationPlatform),
@@ -203,8 +256,11 @@ export const transferFunction = inngest.createFunction(
         );
       }
 
+      // Set status based on whether it was a clean completion or a partial recovery
+      const finalStatus = rateLimitHit ? "partial_completed" : "completed";
+
       await updateJob(jobId, {
-        status: "completed",
+        status: finalStatus,
         matchedCount: matched.length,
         unmatchedCount: unmatched.length,
         unmatchedTracks: unmatched,

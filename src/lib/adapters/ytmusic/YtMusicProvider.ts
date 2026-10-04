@@ -283,6 +283,15 @@ export class YtMusicProvider implements MusicProvider {
         },
       });
 
+      // Handle 429 Rate Limits cleanly
+      if (res.status === 429) {
+        const retryAfter = res.headers.get("retry-after") || "1";
+        console.warn(
+          `YT rate limit exceeded. Retry after ${retryAfter} seconds.`,
+        );
+        throw new Error(`RATE_LIMIT_EXCEEDED:${retryAfter}`);
+      }
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(

@@ -10,13 +10,17 @@ function formatDate(date: string) {
     timeStyle: "short",
   });
 }
+
 export default function HistoryPage() {
   const [jobs, setJobs] = useState<TranferJobSummary[]>([]);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   useEffect(() => {
-    // A flag to prevent setting state if the component unmounts during the API call
     let isMounted = true;
 
     async function fetchJobs() {
@@ -24,7 +28,8 @@ export default function HistoryPage() {
         setIsLoading(true);
         setError("");
 
-        const res = await fetch(`/api/history`);
+        // Pass the current page state to your API endpoint
+        const res = await fetch(`/api/history?page=${currentPage}`);
 
         if (!res.ok) {
           throw new Error(`Failed to fetch history (${res.status})`);
@@ -33,7 +38,9 @@ export default function HistoryPage() {
         const data = await res.json();
 
         if (isMounted) {
-          setJobs(data.jobs || []);
+          // Adjust paths based on your actual backend response body mapping
+          setJobs(data.jobs?.data || []);
+          setTotalPages(data.jobs?.meta?.totalPages || 1);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -48,11 +55,10 @@ export default function HistoryPage() {
 
     fetchJobs();
 
-    // Clean-up function sets the flag to false if user leaves the page early
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentPage]); // Re-fetch whenever the page changes
 
   return (
     <div className={styles.page}>
@@ -64,13 +70,11 @@ export default function HistoryPage() {
         </p>
       </div>
 
-      {/* 3. Handle loading state cleanly */}
       {isLoading ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>Loading your transfers...</p>
         </div>
       ) : error ? (
-        /* 4. Handle error state cleanly */
         <div className={styles.emptyState}>
           <span
             className={styles.emptyIcon}
@@ -81,7 +85,7 @@ export default function HistoryPage() {
           <p className={styles.emptyText}>Something went wrong</p>
           <p className={styles.emptySubtext}>{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => setCurrentPage(1)}
             className={styles.emptyLink}
             style={{ background: "none", border: "none", cursor: "pointer" }}
           >
@@ -100,46 +104,71 @@ export default function HistoryPage() {
           </a>
         </div>
       ) : (
-        <div className={styles.table}>
-          <div className={styles.tableHeader}>
-            <span>Playlist</span>
-            <span>From → To</span>
-            <span>Matched</span>
-            <span>Status</span>
-            <span>Date</span>
-            <span>Remarks</span>
-          </div>
-          {jobs.map((job, index) => (
-            <div key={index} className={styles.tableRow}>
-              <span className={styles.playlistName}>{job?.playlistName}</span>
-              <span className={styles.historyPlatforms}>
-                <span className={styles.platformTag}>{job.sourcePlatform}</span>
-                <span className={styles.historyArrow}>→</span>
-                <span className={styles.platformTag}>
-                  {job.destinationPlatform}
-                </span>
-              </span>
-              <span className={styles.matched}>
-                {job.matchedCount}/{job.totalTracks}
-              </span>
-              <span
-                className={`${styles.historyStatus} ${
-                  job.status === "completed"
-                    ? styles.statusCompleted
-                    : job.status === "failed"
-                      ? styles.statusFailed
-                      : job.status === "running"
-                        ? styles.statusRunning
-                        : styles.statusPending
-                }`}
-              >
-                {job.status}
-              </span>
-              <span className={styles.date}>{formatDate(job.createdAt)}</span>
-              <span className={styles.date}>{job.error}</span>
+        <>
+          <div className={styles.table}>
+            <div className={styles.tableHeader}>
+              <span>Playlist</span>
+              <span>From → To</span>
+              <span>Matched</span>
+              <span>Status</span>
+              <span>Date</span>
+              <span>Remarks</span>
             </div>
-          ))}
-        </div>
+            {jobs.map((job, index) => (
+              <div key={index} className={styles.tableRow}>
+                <span className={styles.playlistName}>{job?.playlistName}</span>
+                <span className={styles.historyPlatforms}>
+                  <span className={styles.platformTag}>{job.sourcePlatform}</span>
+                  <span className={styles.historyArrow}>→</span>
+                  <span className={styles.platformTag}>
+                    {job.destinationPlatform}
+                  </span>
+                </span>
+                <span className={styles.matched}>
+                  {job.matchedCount}/{job.totalTracks}
+                </span>
+                <span
+                  className={`${styles.historyStatus} ${
+                    job.status === "completed"
+                      ? styles.statusCompleted
+                      : job.status === "failed"
+                        ? styles.statusFailed
+                        : job.status === "running"
+                          ? styles.statusRunning
+                          : styles.statusPending
+                  }`}
+                >
+                  {job.status}
+                </span>
+                <span className={styles.date}>{formatDate(job.createdAt)}</span>
+                <span className={styles.date}>{job.error}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls UI Wrapper */}
+          <div className={styles.paginationWrapper} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              style={{ padding: '0.5rem 1rem', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+            >
+              Previous
+            </button>
+            
+            <span style={{ fontSize: '0.95rem' }}>
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              style={{ padding: '0.5rem 1rem', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
