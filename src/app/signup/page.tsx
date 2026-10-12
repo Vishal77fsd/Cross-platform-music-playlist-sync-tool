@@ -137,7 +137,8 @@ export default function SignupPage() {
         <button
           type="button"
           className={formStyles.oauthButton}
-          disabled={isSubmitting}
+          // disabled={isSubmitting}
+          disabled={true}
         >
           Continue with Google
         </button>

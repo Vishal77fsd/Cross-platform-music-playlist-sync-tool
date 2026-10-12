@@ -143,12 +143,12 @@ export default function DashboardPage() {
                     <div className={styles.historyMatchBar}>
                       <div
                         className={styles.historyMatchFill}
-                        style={{ width: `${Math.round((job.matchedCount || 0 / job.totalTracks) * 100)}%` }}
+                        style={{ width: `${Math.round((job.matchedCount / job.totalTracks) * 100)}%` }}
                       />
                     </div>
                     <span className={styles.historyMatchPercent}>
                       {job.totalTracks > 0
-                        ? `${Math.round((job.matchedCount || 0 / job.totalTracks) * 100)}%`
+                        ? `${Math.round((job.matchedCount / job.totalTracks) * 100)}%`
                         : "0%"}
                     </span>
                   </div>

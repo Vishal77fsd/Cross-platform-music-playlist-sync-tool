@@ -120,7 +120,7 @@ function LoginFormInner() {
       <div className={formStyles.divider}>or</div>
 
       <div className={formStyles.oauthRow}>
-        <button type="button" className={formStyles.oauthButton} disabled={isSubmitting}>
+        <button type="button" className={formStyles.oauthButton} disabled={true}>
           Continue with Google
         </button>
       </div>

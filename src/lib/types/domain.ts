@@ -84,7 +84,7 @@ export interface TranferJobSummary extends TransferJobResult {
   sourcePlatform?: string;
   destinationPlatform?: string;
   createdAt: string;
-  matchedCount?: number;
+  matchedCount: number;
 }
 // Define a strict interface for the expected Spotify response
 export interface SpotifyUserProfile {
