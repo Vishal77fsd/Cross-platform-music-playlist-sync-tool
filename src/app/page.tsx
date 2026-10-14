@@ -301,6 +301,7 @@ export default function HomePage() {
         <div className={styles.footerLinks}>
           <Link href="/login" className={styles.footerLink}>Log in</Link>
           <Link href="/signup" className={styles.footerLink}>Sign up</Link>
+          <Link href="/privacy" className={styles.footerLink}>Privacy</Link>
         </div>
       </footer>
     </div>
