@@ -45,7 +45,7 @@ export interface ProviderPlaylist {
 }
 
 /** Registry of supported provider names. Add new providers here first. */
-export type ProviderName = "spotify" | "ytmusic";
+export type ProviderName = "spotify" | "ytmusic" | "amazonmusic";
 
 /** OAuth token bundle stored per-user, per-provider. */
 export interface ProviderAuthToken {

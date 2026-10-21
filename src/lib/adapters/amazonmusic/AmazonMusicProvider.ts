@@ -10,7 +10,8 @@ import * as crypto from "crypto";
 // FIX: This global module variable persists across separate Next.js route file invocations
 let NEXT_JS_GLOBAL_AMAZON_VERIFIER = "";
 
-export class AmazonMusicProvider implements MusicProvider {
+// export class AmazonMusicProvider implements MusicProvider {
+export class AmazonMusicProvider {
   readonly name = "amazonmusic" as const;
   private pkceCache = new Map<String, String>();
   private currentVerifier: string = "";
@@ -81,29 +82,29 @@ export class AmazonMusicProvider implements MusicProvider {
     };
   }
 
-  async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {}
+  // async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {}
 
-  async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {}
+  // async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {}
 
-  async getPlaylistTracks(
-    _token: ProviderAuthToken,
-    _playlistId: string,
-  ): Promise<ProviderTrack[]> {}
+  // async getPlaylistTracks(
+  //   _token: ProviderAuthToken,
+  //   _playlistId: string,
+  // ): Promise<ProviderTrack[]> {}
 
-  async searchTrack(
-    _token: ProviderAuthToken,
-    _query: NormalizedTrack,
-  ): Promise<ProviderTrack[]> {}
+  // async searchTrack(
+  //   _token: ProviderAuthToken,
+  //   _query: NormalizedTrack,
+  // ): Promise<ProviderTrack[]> {}
 
-  async createPlaylist(
-    _token: ProviderAuthToken,
-    _name: string,
-    _description?: string,
-  ): Promise<string> {}
+  // async createPlaylist(
+  //   _token: ProviderAuthToken,
+  //   _name: string,
+  //   _description?: string,
+  // ): Promise<string> {}
 
-  async addTracksToPlaylist(
-    _token: ProviderAuthToken,
-    _playlistId: string,
-    _trackProviderIds: string[],
-  ): Promise<void> {}
+  // async addTracksToPlaylist(
+  //   _token: ProviderAuthToken,
+  //   _playlistId: string,
+  //   _trackProviderIds: string[],
+  // ): Promise<void> {}
 }
