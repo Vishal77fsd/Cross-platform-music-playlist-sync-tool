@@ -2,10 +2,12 @@ import { inngest } from "@/inngest/client";
 import { getSession } from "@/lib/auth/session";
 import { findAccount } from "@/lib/db/accounts";
 import { createJob } from "@/lib/db/jobs";
+import { logger } from "@/lib/logger";
 import { runTransferJob } from "@/lib/transfer/worker";
 import { after, type NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+  logger.info("[transfer] POST request received");
   const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

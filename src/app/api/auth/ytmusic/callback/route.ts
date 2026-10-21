@@ -1,8 +1,10 @@
 import { YtMusicProvider } from "@/lib/adapters/ytmusic/YtMusicProvider";
 import { upsertAccount } from "@/lib/db/accounts";
+import { logger } from "@/lib/logger";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
+  logger.info("[ytmusic callback] GET request received");
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -72,6 +74,7 @@ export async function GET(req: NextRequest) {
       new URL("/dashboard/platforms?connected=ytmusic", req.url)
     );
   } catch (err) {
+    logger.error(`[ytmusic callback] failed:${err}`);
     console.error("[ytmusic callback] failed:", err);
     return NextResponse.redirect(
       new URL("/dashboard/platforms?error=token_exchange_failed", req.url)

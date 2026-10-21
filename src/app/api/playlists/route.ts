@@ -3,9 +3,11 @@ import { YtMusicProvider } from "@/lib/adapters/ytmusic/YtMusicProvider";
 import { getValidToken } from "@/lib/auth/refreshToken";
 import { getSession } from "@/lib/auth/session";
 import { findAccount } from "@/lib/db/accounts";
+import { logger } from "@/lib/logger";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
+  logger.info("[playlists] GET request received");
   const session = await getSession(request);
 
   if (!session) {
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   } catch (error) {
+    logger.error(`[playlists] ${platform} fetch failed: ${error}`);
     console.error(`[playlists] ${platform} fetch failed:`, error);
     return NextResponse.json(
       { error: "Failed to fetch playlists. Try reconnecting the platform." },

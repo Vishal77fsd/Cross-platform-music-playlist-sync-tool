@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth/session";
 import { getJob } from "@/lib/db/jobs";
+import { logger } from "@/lib/logger";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
     params: Promise<{ jobId: string }>;
   },
 ) {
+  logger.info("[transfer job] GET request received");
   const session = await getSession(request);
 
   if (!session) {

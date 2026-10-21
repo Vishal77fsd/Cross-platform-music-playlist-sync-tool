@@ -5,6 +5,7 @@ import type {
   ProviderTrack,
 } from "../../types/domain";
 import type { MusicProvider } from "../../core/MusicProvider";
+import { logger } from "@/lib/logger";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://googleapis.com";
@@ -32,6 +33,7 @@ export class YtMusicProvider implements MusicProvider {
     "http://localhost:3000/api/auth/ytmusic/callback";
 
   getAuthorizationUrl(state: string): string {
+    logger.info(`[ytmusic connect] Generating authorization URL for state: ${state}`);
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -45,6 +47,7 @@ export class YtMusicProvider implements MusicProvider {
   }
 
   async exchangeCodeForToken(_code: string): Promise<ProviderAuthToken> {
+    logger.info(`[ytmusic connect] Exchanging code for token: ${_code}`);
     const clientId =
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
       process.env.GOOGLE_CLIENT_ID ||
@@ -65,6 +68,8 @@ export class YtMusicProvider implements MusicProvider {
       body: body.toString(),
     });
 
+    logger.info(`[ytmusic connect] Token exchange response status: ${res.status}`);
+
     if (!res.ok) {
       const error = await res.text();
       throw new Error(`Google token exchange failed: ${error}`);
@@ -80,6 +85,7 @@ export class YtMusicProvider implements MusicProvider {
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {
+    logger.info(`[ytmusic connect] Refreshing token for provider: ${_token.provider}`);
     if (!_token.refreshToken) {
       throw new Error("No refresh token available for YouTube Music.");
     }
@@ -113,6 +119,7 @@ export class YtMusicProvider implements MusicProvider {
   }
 
   async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {
+    logger.info(`[ytmusic connect] Fetching playlists for provider: ${_token.provider}`);
     const playlists: ProviderPlaylist[] = [];
     let pageToken: string | undefined;
 
@@ -175,6 +182,7 @@ export class YtMusicProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _playlistId: string,
   ): Promise<ProviderTrack[]> {
+    logger.info(`[ytmusic connect] Fetching tracks for playlist ID: ${_playlistId}`);
     if (!_playlistId) {
       throw new Error("Playlist ID not found.");
     }
@@ -268,6 +276,7 @@ export class YtMusicProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
+    logger.info(`[ytmusic connect] Searching track for query: ${_query.title} by ${_query.artist}`);
     const searchQuery = _query.artist
       ? `${_query.title} ${_query.artist}`
       : `${_query.title}`;
@@ -334,6 +343,7 @@ export class YtMusicProvider implements MusicProvider {
     _name: string,
     _description?: string,
   ): Promise<string> {
+    logger.info(`[ytmusic connect] Creating playlist with name: ${_name}`);
     const url = `${YOUTUBE_API_BASE}/playlists?part=snippet`;
     try {
       const res = await fetch(url, {
@@ -377,6 +387,7 @@ export class YtMusicProvider implements MusicProvider {
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
+    logger.info(`[ytmusic connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`);
     if (!_playlistId) {
       throw new Error("Playlist ID not provided.");
     }

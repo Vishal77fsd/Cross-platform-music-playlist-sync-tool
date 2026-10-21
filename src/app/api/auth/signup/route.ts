@@ -2,6 +2,7 @@ import { createSession } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth/password";
 import { createUser, findUserByEmail } from "@/lib/db/users";
+import { logger } from "@/lib/logger";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
@@ -14,6 +15,7 @@ function hasPgErrorCode(err: unknown): err is PgError {
 }
 
 export async function POST(request: Request) {
+  logger.info("[signup] POST request received");
   let body: unknown;
   try {
     body = await request.json();
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error: unknown) {
+    logger.error(`[signup] unexpected error:${error}`);
     if (hasPgErrorCode(error) && error.code === PG_UNIQUE_VIOLATION) {
       return NextResponse.json(
         { error: "An account with that email already exists." },

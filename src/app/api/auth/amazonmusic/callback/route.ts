@@ -1,7 +1,9 @@
 import { AmazonMusicProvider } from "@/lib/adapters/amazonmusic/AmazonMusicProvider";
+import { logger } from "@/lib/logger";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
+  logger.info("[amazonmusic callback] GET request received");
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");

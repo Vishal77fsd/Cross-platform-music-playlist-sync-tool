@@ -1,8 +1,10 @@
 import { SpotifyProvider } from "@/lib/adapters/spotify/SpotifyProvider";
 import { upsertAccount } from "@/lib/db/accounts";
+import { logger } from "@/lib/logger";
 import { NextResponse, type NextRequest } from "next/server";
 
 async function getSpotifyUserId(accessToken: string): Promise<string> {
+  logger.info("[spotify callback] Fetching Spotify user profile");
   const res = await fetch("https://api.spotify.com/v1/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });

@@ -1,3 +1,4 @@
+import { logger } from "../logger";
 import { pool } from "./pool";
 
 const LIMIT = 5; // Limit the number of jobs returned for a user
@@ -75,6 +76,8 @@ export async function createJob(params: {
   sourcePlaylistId: string;
   playlistName: string;
 }): Promise<TransferJobRecord> {
+  logger.info(`[jobs] creating job for userId: ${params.userId}, sourcePlatform: ${params.sourcePlatform}, destinationPlatform: ${params.destinationPlatform}, sourcePlaylistId: ${params.sourcePlaylistId}`
+  );
   const result = await pool.query(
     `
             INSERT INTO transfer_jobs 
@@ -94,6 +97,7 @@ export async function createJob(params: {
 }
 
 export async function getJob(jobId: string): Promise<TransferJobRecord | null> {
+  logger.info(`[jobs] fetching job with jobId: ${jobId}`);
   const result = await pool.query(`SELECT * FROM transfer_jobs WHERE id = $1`, [
     jobId,
   ]);
@@ -105,6 +109,7 @@ export async function getUserJobs(
   userId: string,
   page: number = 1,
 ): Promise<PaginatedJobs> {
+  logger.info(`[jobs] fetching jobs for userId: ${userId}, page: ${page}`);
   const offset = (page - 1) * LIMIT;
 
   // 1. Fetch the total count of jobs for this specific user
@@ -151,6 +156,7 @@ export async function updateJob(
     error?: string | null;
   },
 ): Promise<void> {
+  logger.info(`[jobs] updating job with jobId: ${jobId}, updates: ${JSON.stringify(updates)}`);
   const fields: string[] = ["updated_at = now()"];
   const values: unknown[] = [];
   let i = 1;

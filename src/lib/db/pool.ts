@@ -1,10 +1,12 @@
 import { Pool } from "pg";
+import { logger } from "../logger";
 
 declare global {
   var _pgPool: Pool | undefined;
 }
 
 function createPool(): Pool {
+  logger.info("[db] Creating new PostgreSQL connection pool");
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {

@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { SpotifyProvider } from "@/lib/adapters/spotify/SpotifyProvider";
 import { getSession } from "@/lib/auth/session";
 import type { NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
+  logger.info("[spotify connect] GET request received");
   // Get the session here — this is a same-site request so cookie works fine
   const session = await getSession(request);
   if (!session) {
@@ -17,5 +19,6 @@ export async function GET(request: NextRequest) {
   const provider = new SpotifyProvider();
   const url = provider.getAuthorizationUrl(state);
 
+  logger.info(`[spotify connect] Redirecting to Spotify authorization URL ${url}, ${state} `);
   return NextResponse.json({ url, state });
 }

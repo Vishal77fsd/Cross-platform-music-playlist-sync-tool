@@ -1,9 +1,11 @@
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { findUserByEmail } from "@/lib/db/users";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  logger.info("[login] POST request received");
   let body: unknown;
 
   try {
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     userId: userInDb.id,
     email: userInDb.email,
   });
-
+  logger.info(`[login] User ${userInDb.email} logged in successfully`);
   // FIX: Data Leak. Explicitly pick only safe public fields to return.
   return NextResponse.json({
     user: {

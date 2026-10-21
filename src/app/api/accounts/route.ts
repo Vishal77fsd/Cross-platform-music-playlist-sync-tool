@@ -2,8 +2,10 @@ import { getSession } from "@/lib/auth/session";
 import { findAccount } from "@/lib/db/accounts";
 import { NextResponse, type NextRequest } from "next/server";
 import { pool } from "@/lib/db/pool";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
+  logger.info("[accounts] GET request received");
   const session = await getSession(req);
 
   if (!session) {

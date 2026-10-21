@@ -1,3 +1,4 @@
+import { logger } from "../logger";
 import { pool } from "./pool";
 
 export interface AccountRecord {
@@ -40,6 +41,8 @@ export async function upsertAccount(params: {
   refreshToken: string | null;
   expiresAt: string;
 }): Promise<AccountRecord> {
+  logger.info(`[accounts] upserting account for userId: ${params.userId}, platform: ${params.platform}`
+  );
   const result = await pool.query(
     `
     INSERT INTO accounts (user_id, platform, provider_account_id, access_token, refresh_token, expires_at)
@@ -68,6 +71,7 @@ export async function findAccount(
   userId: string,
   platform: string,
 ): Promise<AccountRecord | null> {
+  logger.info(`[accounts] finding account for userId: ${userId}, platform: ${platform}`);
   const result = await pool.query(
     `
     SELECT id, user_id, platform, provider_account_id, access_token, refresh_token, expires_at

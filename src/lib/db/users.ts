@@ -1,3 +1,4 @@
+import { logger } from "../logger";
 import { pool } from "./pool";
 
 export interface UserRecord {
@@ -32,6 +33,7 @@ export async function createUser(params: {
   name: string;
   passwordHash: string;
 }): Promise<UserRecord> {
+  logger.info(`[users] creating user with email: ${params.email}, name: ${params.name}`);
   const result = await pool.query(
     `INSERT INTO users (email, name, password_hash, is_verified)
         VALUES ($1, $2, $3, $4)
@@ -45,6 +47,7 @@ export async function createUser(params: {
 export async function findUserByEmail(
   email: string,
 ): Promise<UserRecord | null> {
+  logger.info(`[users] fetching user by email: ${email}`);
   const result = await pool.query(
     `
         SELECT id, name, email, password_hash, is_verified, created_at

@@ -7,6 +7,7 @@ import type {
   SpotifyUserProfile,
 } from "../../types/domain";
 import type { MusicProvider } from "../../core/MusicProvider";
+import { logger } from "@/lib/logger";
 
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -32,6 +33,7 @@ export class SpotifyProvider implements MusicProvider {
     "http://localhost:3000/api/auth/spotify/callback";
 
   getAuthorizationUrl(state: string): string {
+    logger.info(`[spotify connect] Generating authorization URL for state: ${state}`);
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -46,6 +48,7 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async exchangeCodeForToken(_code: string): Promise<ProviderAuthToken> {
+    logger.info(`[spotify connect] Exchanging code for token: ${_code}`);
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       code: _code,
@@ -81,6 +84,7 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {
+    logger.info(`[spotify connect] Refreshing token for provider: ${_token.provider}`);
     if (!_token.refreshToken) {
       throw new Error(
         "Cannot refresh Spotify token: No refresh token available.",
@@ -143,6 +147,7 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {
+    logger.info(`[spotify connect] Fetching playlists for provider: ${_token.provider}`);
     const playlists: ProviderPlaylist[] = [];
 
     let url = `${SPOTIFY_API_BASE}/me/playlists?limit=50`;
@@ -191,6 +196,7 @@ export class SpotifyProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _playlistId: string,
   ): Promise<ProviderTrack[]> {
+    logger.info(`[spotify connect] Fetching tracks for playlist ID: ${_playlistId}`);
     const tracks: ProviderTrack[] = [];
 
     let url: string | null =
@@ -256,6 +262,7 @@ export class SpotifyProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
+    logger.info(`[spotify connect] Searching for track: ${_query.title} by ${_query.artist}`);
     // Build Spotify's field-filtered query for best precision
     // e.g. track:"Ghodey Pe Sawaar" artist:"Amit Trivedi"
     const q = `track:"${_query.title}" artist:"${_query.artist}"`;
@@ -337,6 +344,7 @@ export class SpotifyProvider implements MusicProvider {
     _name: string,
     _description?: string,
   ): Promise<string> {
+    logger.info(`[spotify connect] Creating playlist: ${_name} with description: ${_description}`);
     // FETCH THE USERID FIRST
     // const userId = await this.getUserId(_token);
     try {
@@ -397,6 +405,7 @@ export class SpotifyProvider implements MusicProvider {
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
+    logger.info(`[spotify connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`);
     //   Spotify caps this at 100 track URIs per request — chunk the array.
     const url = `${SPOTIFY_API_BASE}/playlists/${_playlistId}/items`;
 
