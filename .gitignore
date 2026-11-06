@@ -8,3 +8,6 @@
 *.sqlite-journal
 .DS_Store
 next-env.d.ts
+# JavaScript / TypeScript (Jest, Istanbul, Vitest)
+coverage/
+*.lcov
