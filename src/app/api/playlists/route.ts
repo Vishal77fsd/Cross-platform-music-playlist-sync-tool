@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
 
     if (platform === "spotify") {
       const provider = new SpotifyProvider();
-      const playlists = await provider.getPlaylists(token!);
+      const playlists = await provider.getPlaylists(token, session);
       return NextResponse.json({ playlists });
     }
 
     if (platform === "ytmusic") {
       const provider = new YtMusicProvider();
-      const playlists = await provider.getPlaylists(token);
+      const playlists = await provider.getPlaylists(token, session);
       return NextResponse.json({ playlists });
     }
 

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     // 3. Pass the validated page integer to your paginated database engine function
     const jobs = await getUserJobs(session.userId, validatedPage);
-    log.info({ jobs: jobs }, 'Processing jobs');
+    log.info({ jobs: jobs.meta }, 'Processing jobs');
 
     return NextResponse.json({ jobs });
   } catch (error) {

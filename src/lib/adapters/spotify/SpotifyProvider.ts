@@ -8,6 +8,8 @@ import type {
 } from "../../types/domain";
 import type { MusicProvider } from "../../core/MusicProvider";
 import { logger } from "@/lib/logger";
+import { getRedisClient } from "@/lib/redis";
+import { SessionPayload } from "@/lib/auth/session";
 
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -33,7 +35,9 @@ export class SpotifyProvider implements MusicProvider {
     "http://localhost:3000/api/auth/spotify/callback";
 
   getAuthorizationUrl(state: string): string {
-    logger.info(`[spotify connect] Generating authorization URL for state: ${state}`);
+    logger.info(
+      `[spotify connect] Generating authorization URL for state: ${state}`,
+    );
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -84,7 +88,9 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {
-    logger.info(`[spotify connect] Refreshing token for provider: ${_token.provider}`);
+    logger.info(
+      `[spotify connect] Refreshing token for provider: ${_token.provider}`,
+    );
     if (!_token.refreshToken) {
       throw new Error(
         "Cannot refresh Spotify token: No refresh token available.",
@@ -146,8 +152,31 @@ export class SpotifyProvider implements MusicProvider {
     }
   }
 
-  async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {
-    logger.info(`[spotify connect] Fetching playlists for provider: ${_token.provider}`);
+  async getPlaylists(
+    _token: ProviderAuthToken,
+    session: SessionPayload,
+  ): Promise<ProviderPlaylist[]> {
+    logger.info(
+      `[spotify connect] Fetching playlists for provider: ${_token.provider}`,
+    );
+
+    const redis = await getRedisClient();
+
+    // Create a safe, unique key per user token
+    const cacheKey = `playlists:${_token.provider.trim().toLowerCase()}:${session.userId.trim().toLowerCase()}`;
+
+    // CHECK redis before making the api call
+    try {
+      const cachedPlaylists = await redis.get(cacheKey);
+      if (cachedPlaylists) {
+        logger.info(`[Spotify connect] Cache HIT for ${cacheKey}`);
+        return JSON.parse(cachedPlaylists) as ProviderPlaylist[];
+      }
+    } catch (err) {
+      // Log Redis errors without breaking the app if Redis goes down
+      console.error("Redis read error:", err);
+    }
+
     const playlists: ProviderPlaylist[] = [];
 
     let url = `${SPOTIFY_API_BASE}/me/playlists?limit=50`;
@@ -179,7 +208,7 @@ export class SpotifyProvider implements MusicProvider {
             provider: this.name, // "spotify"
             name: item.name,
             description: item.description ?? "",
-            trackCount: item.tracks?.total || item?.items?.total ||0,
+            trackCount: item.tracks?.total || item?.items?.total || 0,
             imageUrl: item.images?.[0]?.url, // Grabs the first available image URL
           });
         }
@@ -189,6 +218,17 @@ export class SpotifyProvider implements MusicProvider {
       url = data.next;
     }
 
+    // save the playlists if its cache miss
+    try {
+      await redis.set(cacheKey, JSON.stringify(playlists), {
+        expiration: {
+          type: "EX",
+          value: 6000,
+        },
+      });
+    } catch (err) {
+      console.error("Redis write error:", err);
+    }
     return playlists;
   }
 
@@ -196,7 +236,9 @@ export class SpotifyProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _playlistId: string,
   ): Promise<ProviderTrack[]> {
-    logger.info(`[spotify connect] Fetching tracks for playlist ID: ${_playlistId}`);
+    logger.info(
+      `[spotify connect] Fetching tracks for playlist ID: ${_playlistId}`,
+    );
     const tracks: ProviderTrack[] = [];
 
     let url: string | null =
@@ -262,7 +304,9 @@ export class SpotifyProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
-    logger.info(`[spotify connect] Searching for track: ${_query.title} by ${_query.artist}`);
+    logger.info(
+      `[spotify connect] Searching for track: ${_query.title} by ${_query.artist}`,
+    );
     // Build Spotify's field-filtered query for best precision
     // e.g. track:"Ghodey Pe Sawaar" artist:"Amit Trivedi"
     const q = `track:"${_query.title}" artist:"${_query.artist}"`;
@@ -271,6 +315,20 @@ export class SpotifyProvider implements MusicProvider {
       type: "track",
       q,
     });
+
+    const redis = await getRedisClient();
+
+    const cacheKey = `track:spotify:${q.trim().toLowerCase()}`;
+
+    try {
+      const cachedTrack = await redis.get(cacheKey);
+      if (cachedTrack) {
+        logger.info(`[spotify connect] Cache HIT for ${cacheKey}`);
+        return JSON.parse(cachedTrack) as ProviderTrack[];
+      }
+    } catch (err) {
+      console.error("Redis read error:", err);
+    }
 
     const res = await fetch(`${SPOTIFY_API_BASE}/search?${params.toString()}`, {
       headers: {
@@ -282,7 +340,9 @@ export class SpotifyProvider implements MusicProvider {
     // Handle 429 Rate Limits cleanly
     if (res.status === 429) {
       const retryAfter = res.headers.get("retry-after") || "1";
-      console.warn(`Spotify rate limit exceeded. Retry after ${retryAfter} seconds.`);
+      console.warn(
+        `Spotify rate limit exceeded. Retry after ${retryAfter} seconds.`,
+      );
       throw new Error(`RATE_LIMIT_EXCEEDED:${retryAfter}`);
     }
     if (!res.ok) {
@@ -317,7 +377,7 @@ export class SpotifyProvider implements MusicProvider {
         items = fallbackData?.tracks?.items ?? [];
       }
     }
-    return items.map(
+    const mappedTracks: ProviderTrack[] = items.map(
       (track: {
         id: string;
         name: string;
@@ -337,6 +397,21 @@ export class SpotifyProvider implements MusicProvider {
         rawSourceText: track.name,
       }),
     );
+
+    // Save to Redis (30 days for matches, 1 hour for empty results)
+    try {
+      const ttl = mappedTracks.length > 0 ? 2592000 : 3600;
+      await redis.set(cacheKey, JSON.stringify(mappedTracks), {
+        expiration: {
+          type: "EX",
+          value: ttl,
+        },
+      });
+    } catch (err) {
+      console.error("Redis write error:", err);
+    }
+
+    return mappedTracks;
   }
 
   async createPlaylist(
@@ -344,7 +419,9 @@ export class SpotifyProvider implements MusicProvider {
     _name: string,
     _description?: string,
   ): Promise<string> {
-    logger.info(`[spotify connect] Creating playlist: ${_name} with description: ${_description}`);
+    logger.info(
+      `[spotify connect] Creating playlist: ${_name} with description: ${_description}`,
+    );
     // FETCH THE USERID FIRST
     // const userId = await this.getUserId(_token);
     try {
@@ -405,7 +482,9 @@ export class SpotifyProvider implements MusicProvider {
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
-    logger.info(`[spotify connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`);
+    logger.info(
+      `[spotify connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`,
+    );
     //   Spotify caps this at 100 track URIs per request — chunk the array.
     const url = `${SPOTIFY_API_BASE}/playlists/${_playlistId}/items`;
 

@@ -6,6 +6,8 @@ import type {
 } from "../../types/domain";
 import type { MusicProvider } from "../../core/MusicProvider";
 import { logger } from "@/lib/logger";
+import { getRedisClient } from "@/lib/redis";
+import { SessionPayload } from "@/lib/auth/session";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://googleapis.com";
@@ -33,7 +35,9 @@ export class YtMusicProvider implements MusicProvider {
     "http://localhost:3000/api/auth/ytmusic/callback";
 
   getAuthorizationUrl(state: string): string {
-    logger.info(`[ytmusic connect] Generating authorization URL for state: ${state}`);
+    logger.info(
+      `[ytmusic connect] Generating authorization URL for state: ${state}`,
+    );
     const params = new URLSearchParams({
       client_id: this.clientId,
       response_type: "code",
@@ -68,7 +72,9 @@ export class YtMusicProvider implements MusicProvider {
       body: body.toString(),
     });
 
-    logger.info(`[ytmusic connect] Token exchange response status: ${res.status}`);
+    logger.info(
+      `[ytmusic connect] Token exchange response status: ${res.status}`,
+    );
 
     if (!res.ok) {
       const error = await res.text();
@@ -85,7 +91,9 @@ export class YtMusicProvider implements MusicProvider {
   }
 
   async refreshToken(_token: ProviderAuthToken): Promise<ProviderAuthToken> {
-    logger.info(`[ytmusic connect] Refreshing token for provider: ${_token.provider}`);
+    logger.info(
+      `[ytmusic connect] Refreshing token for provider: ${_token.provider}`,
+    );
     if (!_token.refreshToken) {
       throw new Error("No refresh token available for YouTube Music.");
     }
@@ -118,8 +126,30 @@ export class YtMusicProvider implements MusicProvider {
     };
   }
 
-  async getPlaylists(_token: ProviderAuthToken): Promise<ProviderPlaylist[]> {
-    logger.info(`[ytmusic connect] Fetching playlists for provider: ${_token.provider}`);
+  async getPlaylists(
+    _token: ProviderAuthToken,
+    session: SessionPayload,
+  ): Promise<ProviderPlaylist[]> {
+    logger.info(
+      `[ytmusic connect] Fetching playlists for provider: ${_token.provider}`,
+    );
+
+    const redis = await getRedisClient();
+
+    // Create a safe, unique key per user token
+    const cacheKey = `playlists:${_token.provider.trim().toLowerCase()}:${session.userId.trim().toLowerCase()}`;
+
+    // CHECK redis before making the api call
+    try {
+      const cachedPlaylists = await redis.get(cacheKey);
+      if (cachedPlaylists) {
+        logger.info(`[ytmusic connect] Cache HIT for ${cacheKey}`);
+        return JSON.parse(cachedPlaylists) as ProviderPlaylist[];
+      }
+    } catch (err) {
+      // Log Redis errors without breaking the app if Redis goes down
+      console.error("Redis read error:", err);
+    }
     const playlists: ProviderPlaylist[] = [];
     let pageToken: string | undefined;
 
@@ -175,6 +205,17 @@ export class YtMusicProvider implements MusicProvider {
       pageToken = data.nextPageToken;
     } while (pageToken);
 
+    // save the playlists if its cache miss
+    try {
+      await redis.set(cacheKey, JSON.stringify(playlists), {
+        expiration: {
+          type: "EX",
+          value: 6000,
+        },
+      });
+    } catch (err) {
+      console.error("Redis write error:", err);
+    }
     return playlists;
   }
 
@@ -182,7 +223,9 @@ export class YtMusicProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _playlistId: string,
   ): Promise<ProviderTrack[]> {
-    logger.info(`[ytmusic connect] Fetching tracks for playlist ID: ${_playlistId}`);
+    logger.info(
+      `[ytmusic connect] Fetching tracks for playlist ID: ${_playlistId}`,
+    );
     if (!_playlistId) {
       throw new Error("Playlist ID not found.");
     }
@@ -276,11 +319,30 @@ export class YtMusicProvider implements MusicProvider {
     _token: ProviderAuthToken,
     _query: NormalizedTrack,
   ): Promise<ProviderTrack[]> {
-    logger.info(`[ytmusic connect] Searching track for query: ${_query.title} by ${_query.artist}`);
+    logger.info(
+      `[ytmusic connect] Searching track for query: ${_query.title} by ${_query.artist}`,
+    );
+
     const searchQuery = _query.artist
       ? `${_query.title} ${_query.artist}`
       : `${_query.title}`;
-    const url = `${YOUTUBE_API_BASE}/search?type=video&videoCategoryId=10&part=snippet&q=${searchQuery}`;
+
+    // 1. Properly encode the query parameter
+    const url = `${YOUTUBE_API_BASE}/search?type=video&videoCategoryId=10&part=snippet&q=${encodeURIComponent(searchQuery)}`;
+
+    const redis = await getRedisClient();
+    // Normalize cache key (lowercase/trimmed) to maximize cache hits
+    const cacheKey = `track:yt:${searchQuery.trim().toLowerCase()}`;
+
+    try {
+      const cachedTrack = await redis.get(cacheKey);
+      if (cachedTrack) {
+        logger.info(`[ytmusic connect] Cache HIT for ${cacheKey}`);
+        return JSON.parse(cachedTrack) as ProviderTrack[];
+      }
+    } catch (err) {
+      console.error("Redis read error:", err);
+    }
 
     try {
       const res = await fetch(url, {
@@ -288,11 +350,9 @@ export class YtMusicProvider implements MusicProvider {
         headers: {
           Authorization: `Bearer ${_token.accessToken}`,
           Accept: "application/json",
-          "Content-type": "application/json",
         },
       });
 
-      // Handle 429 Rate Limits cleanly
       if (res.status === 429) {
         const retryAfter = res.headers.get("retry-after") || "1";
         console.warn(
@@ -304,29 +364,47 @@ export class YtMusicProvider implements MusicProvider {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(
-          `Youtube API responded with status ${res.status}:${JSON.stringify(errorData)}`,
+          `Youtube API responded with status ${res.status}: ${JSON.stringify(errorData)}`,
         );
       }
+
       const data = await res.json();
 
+      // 2. Validate data.items BEFORE mapping or caching
       if (!data.items || !Array.isArray(data.items)) {
         return [];
       }
 
-      return data.items.map((item: any) => {
-        const rawArtist = item.snippet.channelTitle || "";
+      // 3. Map once and reuse for both Redis and the return value
+      const mappedTracks: ProviderTrack[] = data.items.map((item: any) => {
+        const rawArtist = item.snippet?.channelTitle || "";
         const cleanedArtist = rawArtist.endsWith("VEVO")
-          ? rawArtist.slice(0, -4)
+          ? rawArtist.slice(0, -4).trim()
           : rawArtist;
 
         return {
           provider: "ytmusic",
-          providerId: item.id.videoId,
-          title: item.snippet.title,
+          providerId: item.id?.videoId,
+          title: item.snippet?.title,
           artist: cleanedArtist || _query.artist,
-          rawSourceText: item.snippet.title,
+          rawSourceText: item.snippet?.title,
         };
       });
+
+      // 4. Stringify before saving to Redis
+      try {
+        const ttl = mappedTracks.length > 0 ? 2592000 : 3600;
+        await redis.set(cacheKey, JSON.stringify(mappedTracks), {
+          expiration: {
+            type: "EX",
+            value: ttl,
+          },
+        });
+      } catch (err) {
+        console.error("Redis write error:", err);
+      }
+
+      return mappedTracks;
     } catch (err: any) {
       console.error(
         "Error occurred while searching track in YT:",
@@ -387,7 +465,9 @@ export class YtMusicProvider implements MusicProvider {
     _playlistId: string,
     _trackProviderIds: string[],
   ): Promise<void> {
-    logger.info(`[ytmusic connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`);
+    logger.info(
+      `[ytmusic connect] Adding ${_trackProviderIds.length} tracks to playlist ID: ${_playlistId}`,
+    );
     if (!_playlistId) {
       throw new Error("Playlist ID not provided.");
     }

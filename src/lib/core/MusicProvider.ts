@@ -1,3 +1,4 @@
+import { SessionPayload } from "../auth/session";
 import type {
   NormalizedTrack,
   ProviderAuthToken,
@@ -37,7 +38,7 @@ export interface MusicProvider {
   refreshToken(token: ProviderAuthToken): Promise<ProviderAuthToken>;
 
   /** List the authenticated user's playlists (metadata only, no tracks). */
-  getPlaylists(token: ProviderAuthToken): Promise<ProviderPlaylist[]>;
+  getPlaylists(token: ProviderAuthToken, session:SessionPayload): Promise<ProviderPlaylist[]>;
 
   /** Fetch all tracks in a given playlist, normalized to our common shape. */
   getPlaylistTracks(token: ProviderAuthToken, playlistId: string): Promise<ProviderTrack[]>;

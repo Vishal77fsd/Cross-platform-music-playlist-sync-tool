@@ -1,6 +1,8 @@
+import { RedisClient } from "redis";
 import { logger } from "../logger";
 import { pool } from "./pool";
-
+import { getRedisClient } from "@/lib/redis"; // Your Redis client instance
+const CACHE_TTL_SECONDS = 60 * 5; // 5 minutes
 const LIMIT = 5; // Limit the number of jobs returned for a user
 export interface TransferJobRecord {
   id: string;
@@ -76,7 +78,8 @@ export async function createJob(params: {
   sourcePlaylistId: string;
   playlistName: string;
 }): Promise<TransferJobRecord> {
-  logger.info(`[jobs] creating job for userId: ${params.userId}, sourcePlatform: ${params.sourcePlatform}, destinationPlatform: ${params.destinationPlatform}, sourcePlaylistId: ${params.sourcePlaylistId}`
+  logger.info(
+    `[jobs] creating job for userId: ${params.userId}, sourcePlatform: ${params.sourcePlatform}, destinationPlatform: ${params.destinationPlatform}, sourcePlaylistId: ${params.sourcePlaylistId}`,
   );
   const result = await pool.query(
     `
@@ -110,6 +113,27 @@ export async function getUserJobs(
   page: number = 1,
 ): Promise<PaginatedJobs> {
   logger.info(`[jobs] fetching jobs for userId: ${userId}, page: ${page}`);
+
+  // CREATE a unique, predictable key per user and page
+  const cacheKey = `user:${userId}:jobs:page:${page}`;
+
+  try {
+    // Check redis first(cache hit)
+    const redis = await getRedisClient();
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      logger.debug({ userId, page }, "Cache hit for user jobs");
+      return JSON.parse(cached);
+    }
+  } catch (err) {
+    // Graceful degradation: log the error and fall through to the database
+    logger.error(
+      { err, userId, page },
+      "Redis read failed, falling back to DB",
+    );
+  }
+
   const offset = (page - 1) * LIMIT;
 
   // 1. Fetch the total count of jobs for this specific user
@@ -133,8 +157,7 @@ export async function getUserJobs(
 
   // 3. Calculate total pages (math ceiling ensures a partial page counts as a full page)
   const totalPages = Math.ceil(totalItems / LIMIT);
-
-  return {
+  const response: PaginatedJobs = {
     data: dataResult.rows.map(mapRow),
     meta: {
       totalItems,
@@ -143,6 +166,17 @@ export async function getUserJobs(
       limit: LIMIT,
     },
   };
+
+  // SAVE THE result for redis for subsequent request
+  try {
+    const redis = await getRedisClient();
+    await redis.set(cacheKey, JSON.stringify(response), {
+      EX: CACHE_TTL_SECONDS,
+    });
+  } catch (err) {
+    logger.error({ err, userId, page }, "Redis write failed");
+  }
+  return response;
 }
 
 export async function updateJob(
@@ -156,7 +190,9 @@ export async function updateJob(
     error?: string | null;
   },
 ): Promise<void> {
-  logger.info(`[jobs] updating job with jobId: ${jobId}, updates: ${JSON.stringify(updates)}`);
+  logger.info(
+    `[jobs] updating job with jobId: ${jobId}, updates: ${JSON.stringify(updates)}`,
+  );
   const fields: string[] = ["updated_at = now()"];
   const values: unknown[] = [];
   let i = 1;

@@ -245,7 +245,12 @@
   .cardWide {
     grid-column: 1;
   }
+
+  .historyPlatforms {
+    flex-direction: column;
+  }
 }
+
 .errorMessage {
   font-size: 13px;
   color: var(--warn);
